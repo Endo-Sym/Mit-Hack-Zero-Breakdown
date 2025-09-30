@@ -1,0 +1,241 @@
+.sensor-analysis-container {
+  background: white;
+  padding: 2rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.sensor-analysis-container h2 {
+  margin-top: 0;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section label {
+  display: block;
+  margin-bottom: 1.5rem;
+}
+
+.form-section label strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #555;
+}
+
+.form-section input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.3s;
+}
+
+.form-section input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.sensor-grid label small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.button-group button {
+  flex: 1;
+  padding: 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.button-group button:first-child {
+  background: #667eea;
+  color: white;
+}
+
+.button-group button.btn-predict {
+  background: #48bb78;
+  color: white;
+}
+
+.button-group button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.button-group button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.result-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  animation: slideIn 0.4s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-section h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.alerts-box {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.alerts-box h4 {
+  margin-top: 0;
+  color: #856404;
+}
+
+.alerts-box ul {
+  margin-bottom: 0;
+  padding-left: 1.5rem;
+}
+
+.alerts-box li {
+  margin-bottom: 0.5rem;
+  color: #856404;
+}
+
+.success-box {
+  background: #d4edda;
+  border-left: 4px solid #28a745;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.success-box p {
+  margin: 0;
+  color: #155724;
+  font-weight: 600;
+}
+
+.recommendation-box {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 2px solid #667eea;
+}
+
+.recommendation-box h4 {
+  margin-top: 0;
+  color: #667eea;
+}
+
+.prediction-result {
+  border: 2px solid #48bb78;
+}
+
+.risk-score-box {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.risk-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.risk-badge.risk-ต่ำ {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  color: white;
+}
+
+.risk-badge.risk-ปานกลาง {
+  background: linear-gradient(135deg, #ed8936, #dd6b20);
+  color: white;
+}
+
+.risk-badge.risk-สูง {
+  background: linear-gradient(135deg, #f56565, #e53e3e);
+  color: white;
+}
+
+.risk-score {
+  font-size: 3rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.risk-label {
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.prediction-box {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 2px solid #48bb78;
+  margin-bottom: 1rem;
+}
+
+.prediction-box h4 {
+  margin-top: 0;
+  color: #48bb78;
+}

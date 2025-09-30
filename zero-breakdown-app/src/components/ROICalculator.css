@@ -1,0 +1,272 @@
+.roi-calculator-container {
+  background: white;
+  padding: 2rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.roi-calculator-container h2 {
+  margin-top: 0;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.description {
+  color: #666;
+  font-size: 1.05rem;
+  margin-bottom: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-row label strong {
+  color: #555;
+}
+
+.form-row input {
+  padding: 0.75rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.3s;
+}
+
+.form-row input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.form-row small {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.btn-calculate {
+  width: 100%;
+  padding: 1rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.btn-calculate:hover:not(:disabled) {
+  background: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-calculate:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.result-section {
+  margin-top: 2rem;
+  animation: slideIn 0.4s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-section h3 {
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.scenario-box {
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.scenario-box.current {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bfdbfe 100%);
+  border: 2px solid #3b82f6;
+}
+
+.scenario-box.comparison {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+}
+
+.scenario-box h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row span {
+  color: #555;
+}
+
+.stat-row strong {
+  font-size: 1.1rem;
+}
+
+.stat-row strong.loss {
+  color: #dc2626;
+}
+
+.roi-summary {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.roi-box {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.roi-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.roi-stat label {
+  font-weight: 600;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.roi-stat span {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.roi-stat span.cost {
+  color: #dc2626;
+}
+
+.roi-stat span.savings {
+  color: #16a34a;
+}
+
+.roi-stat span.loss {
+  color: #dc2626;
+}
+
+.roi-stat span.positive {
+  color: #16a34a;
+  font-size: 2rem;
+}
+
+.roi-stat span.negative {
+  color: #dc2626;
+  font-size: 2rem;
+}
+
+.roi-stat.highlight {
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.analysis-box {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  margin-bottom: 1.5rem;
+}
+
+.analysis-box h4 {
+  margin-top: 0;
+  color: #667eea;
+}
+
+.recommendation-badge {
+  text-align: center;
+  padding: 1rem;
+}
+
+.badge-positive {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: inline-block;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.badge-negative {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: inline-block;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
