@@ -4,8 +4,9 @@ import ChatInterface from './components/ChatInterface'
 import SensorAnalysis from './components/SensorAnalysis'
 import ROICalculator from './components/ROICalculator'
 import RepairManual from './components/RepairManual'
+import Dashboard from './components/Dashboard'
 import { IoChatbubbleEllipses } from "react-icons/io5"
-import { MdAnalytics } from "react-icons/md"
+import { MdAnalytics, MdDashboard } from "react-icons/md"
 import { FaCalculator, FaTools } from "react-icons/fa"
 
 function App() {
@@ -19,6 +20,13 @@ function App() {
         </div>
 
         <nav className="sidebar-nav">
+          <button
+            className={activeTab === 'dashboard' ? 'nav-item active' : 'nav-item'}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            <MdDashboard className="nav-icon" />
+            <span className="nav-text">Dashboard</span>
+          </button>
           <button
             className={activeTab === 'chat' ? 'nav-item active' : 'nav-item'}
             onClick={() => setActiveTab('chat')}
@@ -57,6 +65,9 @@ function App() {
       <main className="main-container">
         <header className="main-header">
           <h1>
+            {activeTab === 'dashboard' && (
+              <><MdDashboard style={{ marginRight: '0.5rem' }} /> Dashboard</>
+            )}
             {activeTab === 'chat' && (
               <><IoChatbubbleEllipses style={{ marginRight: '0.5rem' }} /> Chat AI Agent</>
             )}
@@ -73,6 +84,7 @@ function App() {
         </header>
 
         <div className="main-content">
+          {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'chat' && <ChatInterface />}
           {activeTab === 'sensor' && <SensorAnalysis />}
           {activeTab === 'roi' && <ROICalculator />}
