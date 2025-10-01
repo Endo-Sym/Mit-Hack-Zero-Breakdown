@@ -6,6 +6,7 @@ import boto3
 import json
 import os
 from datetime import datetime
+from configs import SensorReadings, MachineData, ChatMessage, ROIRequest
 
 app = FastAPI(title="Zero Breakdown Prediction API")
 
@@ -23,35 +24,6 @@ bedrock_runtime = boto3.client(
     service_name='bedrock-runtime',
     region_name='us-west-2'
 )
-
-# Pydantic models
-class SensorReadings(BaseModel):
-    PowerMotor: float
-    CurrentMotor: float
-    TempBrassBearingDE: float
-    SpeedMotor: float
-    SpeedRoller: float
-    TempOilGear: float
-    TempBearingMotorNDE: float
-    TempWindingMotorPhase_U: float
-    TempWindingMotorPhase_V: float
-    TempWindingMotorPhase_W: float
-    Vibration: Optional[float] = None
-
-class MachineData(BaseModel):
-    timestamp: str
-    machine_type: str
-    sensor_readings: SensorReadings
-
-class ChatMessage(BaseModel):
-    message: str
-    context: Optional[Dict] = None
-
-class ROIRequest(BaseModel):
-    current_health_percentage: float
-    comparison_health_percentage: float
-    repair_cost: float
-    daily_production_value: float
 
 # Sensor threshold analysis
 class BreakdownMaintenanceAdviceTool:
@@ -337,36 +309,36 @@ async def calculate_roi(request: ROIRequest):
 
         prompt = f"""วิเคราะห์ ROI ของการซ่อมบำรุงเครื่องจักร:
 
-สถานการณ์ปัจจุบัน:
-- สุขภาพเครื่องจักร: {request.current_health_percentage}%
-- ประมาณการวันก่อนเสียหาย: {days_until_breakdown_current:.0f} วัน
-- การสูญเสียจากประสิทธิภาพลดลง: {production_loss_current:,.2f} บาท
+        สถานการณ์ปัจจุบัน:
+        - สุขภาพเครื่องจักร: {request.current_health_percentage}%
+        - ประมาณการวันก่อนเสียหาย: {days_until_breakdown_current:.0f} วัน
+        - การสูญเสียจากประสิทธิภาพลดลง: {production_loss_current:,.2f} บาท
 
-สถานการณ์เปรียบเทียบ (ถ้าซ่อมที่ {request.comparison_health_percentage}%):
-- ประมาณการวันก่อนเสียหาย: {days_until_breakdown_comparison:.0f} วัน
-- การสูญเสียจากประสิทธิภาพลดลง: {production_loss_comparison:,.2f} บาท
+        สถานการณ์เปรียบเทียบ (ถ้าซ่อมที่ {request.comparison_health_percentage}%):
+        - ประมาณการวันก่อนเสียหาย: {days_until_breakdown_comparison:.0f} วัน
+        - การสูญเสียจากประสิทธิภาพลดลง: {production_loss_comparison:,.2f} บาท
 
-ค่าใช้จ่ายในการซ่อม: {request.repair_cost:,.2f} บาท
-ผลตอบแทนจากการลงทุน (ROI): {roi_percentage:.2f}%
+        ค่าใช้จ่ายในการซ่อม: {request.repair_cost:,.2f} บาท
+        ผลตอบแทนจากการลงทุน (ROI): {roi_percentage:.2f}%
 
-กรุณาอธิบายผลการวิเคราะห์และให้คำแนะนำว่าควรซ่อมตอนไหนดีที่สุด"""
+        กรุณาอธิบายผลการวิเคราะห์และให้คำแนะนำว่าควรซ่อมตอนไหนดีที่สุด"""
+        
+        body = json.dumps({
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 1024
+        })
 
-        response = bedrock_runtime.invoke_model(
-            modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            })
+        # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
+        response_body = client.converse(
+            modelId="qwen.qwen3-32b-v1:0",
+            body=body
         )
-
-        response_body = json.loads(response['body'].read())
-        analysis = response_body['content'][0]['text']
+        analysis= response_body['output']['message']['content'][0]['text']
 
         return {
             "current_scenario": {
