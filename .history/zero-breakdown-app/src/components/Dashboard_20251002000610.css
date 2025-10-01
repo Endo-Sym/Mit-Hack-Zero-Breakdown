@@ -1,0 +1,175 @@
+.dashboard-container {
+  background: #f5f5f5;
+  padding: 2rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.dashboard-header {
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  display: flex;
+  align-items: center;
+  font-size: 2rem;
+}
+
+.description {
+  color: #666;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.machines-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  gap: 1.5rem;
+}
+
+.machine-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.machine-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.machine-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.alarm-indicator {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.alarm-indicator.normal {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  color: white;
+}
+
+.alarm-indicator.alarm {
+  background: linear-gradient(135deg, #f56565, #e53e3e);
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.machine-header h3 {
+  margin: 0;
+  color: #333;
+  flex-grow: 1;
+  font-size: 1.3rem;
+}
+
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.status-badge.normal {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.alarm {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.charts-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.chart-box {
+  background: #fafafa;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.chart-box h4 {
+  margin: 0 0 1rem 0;
+  color: #555;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .machines-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .charts-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+
+  .machine-card {
+    padding: 1rem;
+  }
+
+  .alarm-indicator {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+
+  .machine-header h3 {
+    font-size: 1.1rem;
+  }
+}
+
+/* Loading state */
+.spin-icon {
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

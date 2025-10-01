@@ -5,7 +5,8 @@ import SensorAnalysis from './components/SensorAnalysis'
 import ROICalculator from './components/ROICalculator'
 import RepairManual from './components/RepairManual'
 import Dashboard from './components/Dashboard'
-import { IoChatbubbleEllipses } from "react-icons/io5"
+import Settings from './components/Settings'
+import { IoChatbubbleEllipses, IoSettings } from "react-icons/io5"
 import { MdAnalytics, MdDashboard } from "react-icons/md"
 import { FaCalculator, FaTools } from "react-icons/fa"
 
@@ -55,6 +56,13 @@ function App() {
             <FaTools className="nav-icon" />
             <span className="nav-text">คู่มือซ่อม</span>
           </button>
+          <button
+            className={activeTab === 'settings' ? 'nav-item active' : 'nav-item'}
+            onClick={() => setActiveTab('settings')}
+          >
+            <IoSettings className="nav-icon" />
+            <span className="nav-text">การตั้งค่า</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -80,6 +88,9 @@ function App() {
             {activeTab === 'manual' && (
               <><FaTools style={{ marginRight: '0.5rem' }} /> คู่มือการซ่อม</>
             )}
+            {activeTab === 'settings' && (
+              <><IoSettings style={{ marginRight: '0.5rem' }} /> การตั้งค่า</>
+            )}
           </h1>
         </header>
 
@@ -89,6 +100,7 @@ function App() {
           {activeTab === 'sensor' && <SensorAnalysis />}
           {activeTab === 'roi' && <ROICalculator />}
           {activeTab === 'manual' && <RepairManual />}
+          {activeTab === 'settings' && <Settings />}
         </div>
       </main>
     </div>

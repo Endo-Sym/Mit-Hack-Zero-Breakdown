@@ -1,15 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import './SensorAnalysis.css'
-import { MdAnalytics } from 'react-icons/md'
-import { IoSearch, IoCheckmarkCircle, IoWarning } from 'react-icons/io5'
+import { MdAnalytics, MdOutlineFactory } from 'react-icons/md'
+import { IoSearch, IoCheckmarkCircle, IoWarning, IoRefresh } from 'react-icons/io5'
 import { BiLoaderAlt } from 'react-icons/bi'
 import { GiCrystalBall } from 'react-icons/gi'
 
 const API_URL = 'http://localhost:8000'
 
 function SensorAnalysis() {
+  const [useUploadedData, setUseUploadedData] = useState(false)
+  const [availableMachines, setAvailableMachines] = useState([])
+  const [selectedMachine, setSelectedMachine] = useState('')
   const [machineType, setMachineType] = useState('Feed Mill 1')
   const [sensorData, setSensorData] = useState({
     PowerMotor: 295,
@@ -27,6 +30,44 @@ function SensorAnalysis() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [predictionResult, setPredictionResult] = useState(null)
+
+  useEffect(() => {
+    fetchMachines()
+  }, [])
+
+  const fetchMachines = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/machines`)
+      if (response.data.machines && response.data.machines.length > 0) {
+        setAvailableMachines(response.data.machines)
+        setSelectedMachine(response.data.machines[0])
+      }
+    } catch (error) {
+      console.log('No uploaded data available')
+    }
+  }
+
+  const loadMachineData = async () => {
+    if (!selectedMachine) return
+
+    setLoading(true)
+    try {
+      const response = await axios.get(`${API_URL}/api/machine-data/${selectedMachine}`)
+      setSensorData(response.data.sensor_readings)
+      setMachineType(selectedMachine)
+      setResult({
+        alerts: response.data.alerts,
+        status_summary: response.data.status_summary,
+        recommended_action: response.data.alerts.length > 0
+          ? 'ข้อมูลถูกโหลดจากฐานข้อมูล กรุณากดวิเคราะห์เพื่อรับคำแนะนำจาก AI'
+          : 'เครื่องจักรทำงานปกติ'
+      })
+    } catch (error) {
+      alert(`เกิดข้อผิดพลาด: ${error.response?.data?.detail || error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleInputChange = (field, value) => {
     setSensorData(prev => ({ ...prev, [field]: parseFloat(value) || 0 }))
@@ -67,6 +108,32 @@ function SensorAnalysis() {
   return (
     <div className="sensor-analysis-container">
       <h2><MdAnalytics style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />วิเคราะห์ข้อมูล Sensor</h2>
+
+      {availableMachines.length > 0 && (
+        <div className="machine-selector-section">
+          <h3><MdOutlineFactory style={{ marginRight: '0.5rem' }} />เลือกเครื่องจักรจากข้อมูลที่อัพโหลด</h3>
+          <div className="machine-selector-controls">
+            <select
+              value={selectedMachine}
+              onChange={(e) => setSelectedMachine(e.target.value)}
+              className="machine-select"
+            >
+              {availableMachines.map((machine) => (
+                <option key={machine} value={machine}>
+                  {machine}
+                </option>
+              ))}
+            </select>
+            <button onClick={loadMachineData} disabled={loading} className="btn-load-data">
+              {loading ? (
+                <><BiLoaderAlt className="spin-icon" /> กำลังโหลด...</>
+              ) : (
+                <><IoRefresh style={{ marginRight: '0.5rem' }} /> โหลดข้อมูลปัจจุบัน</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="form-section">
         <label>

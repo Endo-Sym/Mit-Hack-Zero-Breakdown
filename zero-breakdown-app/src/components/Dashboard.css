@@ -6,7 +6,7 @@
 }
 
 .dashboard-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .dashboard-header h2 {
@@ -23,139 +23,152 @@
   margin: 0;
 }
 
-.machines-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
-  gap: 1.5rem;
-}
-
-.machine-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.machine-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.machine-header {
+/* Machine Selector */
+.machine-selector {
   display: flex;
-  align-items: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
-.alarm-indicator {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-}
-
-.alarm-indicator.normal {
-  background: linear-gradient(135deg, #48bb78, #38a169);
-  color: white;
-}
-
-.alarm-indicator.alarm {
-  background: linear-gradient(135deg, #f56565, #e53e3e);
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.9;
-  }
-}
-
-.machine-header h3 {
-  margin: 0;
-  color: #333;
-  flex-grow: 1;
-  font-size: 1.3rem;
-}
-
-.status-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.status-badge.normal {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-badge.alarm {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.charts-container {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-}
-
-.chart-box {
-  background: #fafafa;
-  padding: 1rem;
+.machine-btn {
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 2px solid #ddd;
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #333;
 }
 
-.chart-box h4 {
-  margin: 0 0 1rem 0;
-  color: #555;
-  font-size: 0.95rem;
+.machine-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.machine-btn.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-color: #3b82f6;
+}
+
+/* Main Dashboard Layout */
+.dashboard-main {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Gauges Section */
+.gauges-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.gauge-card {
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gauge-label {
+  text-align: center;
   font-weight: 600;
+  color: #475569;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gauge-value {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #1e293b;
+  margin-top: 0.5rem;
+}
+
+/* Charts Section */
+.charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.chart-card {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.chart-header h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.status-indicator {
+  padding: 0.4rem 0.9rem;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid #fcd34d;
 }
 
 /* Responsive adjustments */
 @media (max-width: 1400px) {
-  .machines-grid {
-    grid-template-columns: 1fr;
+  .dashboard-main {
+    grid-template-columns: 300px 1fr;
   }
 }
 
-@media (max-width: 900px) {
-  .charts-container {
+@media (max-width: 1024px) {
+  .dashboard-main {
     grid-template-columns: 1fr;
+  }
+
+  .gauges-section {
+    flex-direction: row;
+    justify-content: center;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .dashboard-container {
     padding: 1rem;
   }
 
-  .machine-card {
+  .dashboard-main {
     padding: 1rem;
   }
 
-  .alarm-indicator {
-    width: 50px;
-    height: 50px;
-    font-size: 1.5rem;
-  }
-
-  .machine-header h3 {
-    font-size: 1.1rem;
+  .gauges-section {
+    flex-direction: column;
   }
 }
 

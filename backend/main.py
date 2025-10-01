@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 import boto3
 import json
 import os
+import pandas as pd
+import numpy as np
 from datetime import datetime
+from io import StringIO
 from configs import SensorReadings, MachineData, ChatMessage, ROIRequest
 
 app = FastAPI(title="Zero Breakdown Prediction API")
@@ -145,10 +148,166 @@ class BreakdownMaintenanceAdviceTool:
 
 maintenance_tool = BreakdownMaintenanceAdviceTool()
 
+# In-memory data storage (replace with database in production)
+uploaded_data_store = {
+    "dataframe": None,
+    "machines": [],
+    "metadata": {}
+}
+
+def clean_sensor_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean and organize sensor data"""
+    # Remove duplicates
+    df = df.drop_duplicates()
+
+    # Handle missing values
+    numeric_columns = df.select_dtypes(include=[np.number]).columns
+    df[numeric_columns] = df[numeric_columns].fillna(df[numeric_columns].median())
+
+    # Remove outliers using IQR method
+    for col in numeric_columns:
+        if col not in ['Machine_ID']:
+            Q1 = df[col].quantile(0.25)
+            Q3 = df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 3 * IQR
+            upper_bound = Q3 + 3 * IQR
+            df[col] = df[col].clip(lower_bound, upper_bound)
+
+    return df
+
 # API Endpoints
 @app.get("/")
 def read_root():
     return {"message": "Zero Breakdown Prediction API", "status": "running"}
+
+@app.post("/api/upload-csv")
+async def upload_csv(file: UploadFile = File(...)):
+    """อัพโหลดและประมวลผลไฟล์ CSV ข้อมูลเครื่องจักร"""
+    try:
+        # Read CSV file
+        contents = await file.read()
+        df = pd.read_csv(StringIO(contents.decode('utf-8')))
+
+        # Validate required columns
+        required_columns = [
+            'Timestamp', 'Machine_ID', 'PowerMotor', 'CurrentMotor',
+            'TempBrassBearingDE', 'SpeedMotor', 'TempOilGear',
+            'TempBearingMotorNDE', 'TempWindingMotorPhase_U',
+            'TempWindingMotorPhase_V', 'TempWindingMotorPhase_W', 'Vibration'
+        ]
+
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ไฟล์ CSV ขาดคอลัมน์: {', '.join(missing_columns)}"
+            )
+
+        # Clean data
+        original_rows = len(df)
+        df = clean_sensor_data(df)
+
+        # Convert Timestamp to datetime
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+
+        # Get machine list
+        machines = sorted(df['Machine_ID'].unique().tolist())
+
+        # Calculate data quality metrics
+        missing_values = df.isnull().sum().sum()
+        completeness = ((df.size - missing_values) / df.size) * 100
+
+        # Get date range
+        min_date = df['Timestamp'].min().strftime('%Y-%m-%d')
+        max_date = df['Timestamp'].max().strftime('%Y-%m-%d')
+        date_range = f"{min_date} ถึง {max_date}"
+
+        # Store data globally
+        uploaded_data_store["dataframe"] = df
+        uploaded_data_store["machines"] = machines
+        uploaded_data_store["metadata"] = {
+            "total_rows": len(df),
+            "total_machines": len(machines),
+            "date_range": date_range,
+            "completeness": round(completeness, 2),
+            "missing_values": int(missing_values)
+        }
+
+        return {
+            "total_rows": len(df),
+            "total_machines": len(machines),
+            "machines": machines,
+            "date_range": date_range,
+            "data_quality": {
+                "completeness": round(completeness, 2),
+                "missing_values": int(missing_values)
+            },
+            "message": "อัพโหลดและประมวลผลข้อมูลสำเร็จ"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/machines")
+async def get_machines():
+    """ดึงรายการเครื่องจักรที่มีข้อมูล"""
+    try:
+        if uploaded_data_store["dataframe"] is None:
+            return {"machines": [], "message": "ยังไม่มีข้อมูล กรุณาอัพโหลดไฟล์ CSV ก่อน"}
+
+        return {
+            "machines": uploaded_data_store["machines"],
+            "metadata": uploaded_data_store["metadata"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/machine-data/{machine_id}")
+async def get_machine_data(machine_id: str, limit: int = 100):
+    """ดึงข้อมูลล่าสุดของเครื่องจักร"""
+    try:
+        if uploaded_data_store["dataframe"] is None:
+            raise HTTPException(status_code=404, detail="ยังไม่มีข้อมูล กรุณาอัพโหลดไฟล์ CSV ก่อน")
+
+        df = uploaded_data_store["dataframe"]
+        machine_df = df[df['Machine_ID'] == machine_id].sort_values('Timestamp', ascending=False).head(limit)
+
+        if machine_df.empty:
+            raise HTTPException(status_code=404, detail=f"ไม่พบข้อมูลของเครื่องจักร {machine_id}")
+
+        # Get latest reading
+        latest = machine_df.iloc[0]
+
+        # Convert to sensor readings format
+        sensor_data = {
+            "PowerMotor": float(latest['PowerMotor']),
+            "CurrentMotor": float(latest['CurrentMotor']),
+            "TempBrassBearingDE": float(latest['TempBrassBearingDE']),
+            "SpeedMotor": float(latest['SpeedMotor']),
+            "SpeedRoller": float(latest.get('SpeedRoller', 5.5)),
+            "TempOilGear": float(latest['TempOilGear']),
+            "TempBearingMotorNDE": float(latest['TempBearingMotorNDE']),
+            "TempWindingMotorPhase_U": float(latest['TempWindingMotorPhase_U']),
+            "TempWindingMotorPhase_V": float(latest['TempWindingMotorPhase_V']),
+            "TempWindingMotorPhase_W": float(latest['TempWindingMotorPhase_W']),
+            "Vibration": float(latest['Vibration'])
+        }
+
+        # Analyze current status
+        analysis = maintenance_tool.analyze_sensors(sensor_data)
+
+        return {
+            "machine_id": machine_id,
+            "timestamp": latest['Timestamp'].isoformat(),
+            "sensor_readings": sensor_data,
+            "alerts": analysis['alerts'],
+            "status_summary": analysis['status_summary'],
+            "historical_count": len(machine_df)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/analyze-sensors")
 async def analyze_sensors(data: MachineData):

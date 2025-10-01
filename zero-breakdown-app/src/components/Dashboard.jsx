@@ -1,26 +1,23 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import GaugeChart from 'react-gauge-chart'
 import './Dashboard.css'
 import { MdDashboard } from 'react-icons/md'
-import { BiLoaderAlt } from 'react-icons/bi'
-import { IoAlertCircle, IoCheckmarkCircle } from 'react-icons/io5'
 
 const API_URL = 'http://localhost:8000'
 
 function Dashboard() {
+  const [selectedMachine, setSelectedMachine] = useState('Feed Mill 1')
+  const [currentValues, setCurrentValues] = useState({
+    currentMotor: 305,
+    temperature: 68
+  })
   const [machineData, setMachineData] = useState({
     'Feed Mill 1': [],
     'Feed Mill 2': [],
     'Feed Mill 3': [],
     'Feed Mill 4': []
-  })
-  const [loading, setLoading] = useState(false)
-  const [alarmStatus, setAlarmStatus] = useState({
-    'Feed Mill 1': 'normal',
-    'Feed Mill 2': 'normal',
-    'Feed Mill 3': 'normal',
-    'Feed Mill 4': 'alarm'
   })
 
   // Generate sample time-series data
@@ -32,22 +29,13 @@ function Dashboard() {
       const dataPoints = []
       const now = new Date()
 
-      for (let i = 30; i >= 0; i--) {
-        const date = new Date(now)
-        date.setDate(date.getDate() - i)
-        const dateStr = `Oct ${date.getDate()}`
-
-        // Generate different patterns for each machine
-        const baseVibration = machineIdx === 3 ? 2.5 : 1.2
-        const variation = Math.random() * 0.5 - 0.25
-        const spike = (machineIdx === 3 && i < 5) ? Math.random() * 2 : 0
+      for (let i = 100; i >= 0; i--) {
+        const timestamp = i
 
         dataPoints.push({
-          date: dateStr,
-          vibration: +(baseVibration + variation + spike).toFixed(2),
-          temperature: +(65 + Math.random() * 10).toFixed(1),
-          power: +(290 + Math.random() * 20).toFixed(1),
-          current: +(295 + Math.random() * 15).toFixed(1)
+          timestamp: timestamp,
+          current: +(280 + Math.random() * 40).toFixed(1),
+          temperature: +(60 + Math.random() * 20).toFixed(1)
         })
       }
 
@@ -55,18 +43,21 @@ function Dashboard() {
     })
 
     setMachineData(data)
+
+    // Update current values
+    setCurrentValues({
+      currentMotor: +(280 + Math.random() * 40).toFixed(1),
+      temperature: +(60 + Math.random() * 20).toFixed(1)
+    })
   }
 
   useEffect(() => {
     generateSampleData()
-    // Refresh data every 30 seconds
-    const interval = setInterval(generateSampleData, 30000)
+    const interval = setInterval(generateSampleData, 5000)
     return () => clearInterval(interval)
   }, [])
 
-  const getMachineStatus = (machineName) => {
-    return alarmStatus[machineName] || 'normal'
-  }
+  const data = machineData[selectedMachine] || []
 
   return (
     <div className="dashboard-container">
@@ -80,195 +71,124 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="machines-grid">
-        {Object.entries(machineData).map(([machineName, data]) => {
-          const status = getMachineStatus(machineName)
+      {/* Machine Selector */}
+      <div className="machine-selector">
+        {Object.keys(machineData).map((machineName) => (
+          <button
+            key={machineName}
+            className={`machine-btn ${selectedMachine === machineName ? 'active' : ''}`}
+            onClick={() => setSelectedMachine(machineName)}
+          >
+            {machineName}
+          </button>
+        ))}
+      </div>
 
-          return (
-            <div key={machineName} className="machine-card">
-              <div className="machine-header">
-                <div className={`alarm-indicator ${status}`}>
-                  {status === 'alarm' ? (
-                    <IoAlertCircle className="alarm-icon" />
-                  ) : (
-                    <IoCheckmarkCircle className="normal-icon" />
-                  )}
-                </div>
-                <h3>{machineName}</h3>
-                <span className={`status-badge ${status}`}>
-                  {status === 'alarm' ? 'มีแจ้งเตือน' : 'ปกติ'}
-                </span>
-              </div>
+      {/* Main Dashboard Layout */}
+      <div className="dashboard-main">
+        {/* Left Side - Gauges */}
+        <div className="gauges-section">
+          {/* Current Motor Gauge */}
+          <div className="gauge-card">
+            <GaugeChart
+              id="current-motor-gauge"
+              nrOfLevels={3}
+              percent={currentValues.currentMotor / 400}
+              textColor="#000"
+              colors={["#10b981", "#fbbf24", "#ef4444"]}
+              arcWidth={0.25}
+              needleColor="#334155"
+              needleBaseColor="#334155"
+              hideText={true}
+            />
+            <div className="gauge-label">CURRENT MOTOR</div>
+            <div className="gauge-value">{currentValues.currentMotor.toFixed(1)} A</div>
+          </div>
 
-              <div className="charts-container">
-                {/* Vibration Chart */}
-                <div className="chart-box">
-                  <h4>Vibration (mm/s)</h4>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={data}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 11 }}
-                        interval={4}
-                      />
-                      <YAxis
-                        domain={[0, 5]}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="vibration"
-                        stroke={status === 'alarm' ? '#e53e3e' : '#48bb78'}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      {/* Threshold lines */}
-                      <Line
-                        type="monotone"
-                        dataKey={() => 1.8}
-                        stroke="#48bb78"
-                        strokeWidth={1}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={() => 4.5}
-                        stroke="#ed8936"
-                        strokeWidth={1}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+          {/* Temperature Bearing Motor Gauge */}
+          <div className="gauge-card">
+            <GaugeChart
+              id="temperature-gauge"
+              nrOfLevels={3}
+              percent={currentValues.temperature / 100}
+              textColor="#000"
+              colors={["#10b981", "#fbbf24", "#ef4444"]}
+              arcWidth={0.25}
+              needleColor="#334155"
+              needleBaseColor="#334155"
+              hideText={true}
+            />
+            <div className="gauge-label">TEMPERATURE<br/>BEARING MOTOR</div>
+            <div className="gauge-value">{currentValues.temperature.toFixed(1)} °C</div>
+          </div>
+        </div>
 
-                {/* Temperature Chart */}
-                <div className="chart-box">
-                  <h4>Temperature (°C)</h4>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={data}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 11 }}
-                        interval={4}
-                      />
-                      <YAxis
-                        domain={[0, 100]}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="temperature"
-                        stroke="#667eea"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={() => 75}
-                        stroke="#ed8936"
-                        strokeWidth={1}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Power Chart */}
-                <div className="chart-box">
-                  <h4>Power (kW)</h4>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={data}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 11 }}
-                        interval={4}
-                      />
-                      <YAxis
-                        domain={[250, 350]}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="power"
-                        stroke="#f59e0b"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={() => 280}
-                        stroke="#48bb78"
-                        strokeWidth={1}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={() => 320}
-                        stroke="#48bb78"
-                        strokeWidth={1}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Current Chart */}
-                <div className="chart-box">
-                  <h4>Current (Amp)</h4>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={data}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 11 }}
-                        interval={4}
-                      />
-                      <YAxis
-                        domain={[250, 350]}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="current"
-                        stroke="#9333ea"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={() => 270}
-                        stroke="#48bb78"
-                        strokeWidth={1}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={() => 330}
-                        stroke="#48bb78"
-                        strokeWidth={1}
-                        strokeDasharray="5 5"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+        {/* Right Side - Charts */}
+        <div className="charts-section">
+          {/* Current Motor Chart */}
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Current Motor (Amp)</h3>
+              <div className="status-indicator">แจ้งเตือนเกินขีดจำกัด</div>
             </div>
-          )
-        })}
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+                <XAxis
+                  dataKey="timestamp"
+                  tick={{ fontSize: 11 }}
+                  interval={10}
+                  label={{ value: 'Time', position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis
+                  domain={[0, 400]}
+                  tick={{ fontSize: 11 }}
+                  ticks={[0, 100, 200, 300, 400]}
+                />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="current"
+                  stroke="#1e40af"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Temperature Bearing Motor Chart */}
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Temperature Bearing Motor DE C</h3>
+              <div className="status-indicator">แจ้งเตือนเกินขีดจำกัด</div>
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+                <XAxis
+                  dataKey="timestamp"
+                  tick={{ fontSize: 11 }}
+                  interval={10}
+                  label={{ value: 'Time', position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 11 }}
+                  ticks={[0, 20, 40, 60, 80, 100]}
+                />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="temperature"
+                  stroke="#1e40af"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
     </div>
   )
