@@ -157,6 +157,7 @@ async def analyze_sensors(data: MachineData):
         sensor_dict = data.sensor_readings.dict()
         analysis = maintenance_tool.analyze_sensors(sensor_dict)
 
+#------------ prompt นี้ รอ ทำ RAG--------------------------------
         # Generate maintenance advice using AWS Bedrock
         if analysis['alerts']:
             prompt = f"""วิเคราะห์ข้อมูล sensor ของเครื่องจักร {data.machine_type}:

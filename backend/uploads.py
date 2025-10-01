@@ -9,3 +9,10 @@ def extract_text_fitz(pdf_path):
         full_text += page.get_text()  # ดึงข้อความจากแต่ละหน้า
     return full_text
 
+
+# ฟังก์ชันสำหรับการโหลด embeddings จากไฟล์
+def load_embeddings_from_file(file_path):
+    with open(file_path, 'r') as f:
+        embeddings = json.load(f)
+    return embeddings
+

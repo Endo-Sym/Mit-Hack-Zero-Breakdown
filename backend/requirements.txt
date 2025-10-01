@@ -3,4 +3,5 @@ uvicorn[standard]==0.32.1
 pydantic==2.10.3
 boto3==1.35.75
 python-multipart==0.0.20
-pymupdf=1.26.4
+pymupdf==1.26.4
+scikit-learn==1.7.2
