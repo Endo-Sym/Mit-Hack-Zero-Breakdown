@@ -1,4 +1,13 @@
+import json
+import numpy as np
 import fitz  # PyMuPDF
+import boto3
+import json
+import os
+from sklearn.metrics.pairwise import cosine_similarity
+
+# สร้าง client สำหรับ AWS Bedrock
+bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
 
 # ฟังก์ชันสำหรับการ extrach file เป็น text 
 def extract_text_fitz(pdf_path):
@@ -10,12 +19,6 @@ def extract_text_fitz(pdf_path):
         full_text += page.get_text()  # ดึงข้อความจากแต่ละหน้า
     return full_text
 
-
-# ฟังก์ชันสำหรับการโหลด embeddings จากไฟล์
-def load_embeddings_from_file(file_path):
-    with open(file_path, 'r') as f:
-        embeddings = json.load(f)
-    return embeddings
 
 def generate_embeddings(texts):
     embeddings = []

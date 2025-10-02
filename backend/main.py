@@ -11,6 +11,7 @@ from datetime import datetime
 from io import StringIO
 from dotenv import load_dotenv
 from configs import SensorReadings, MachineData, ChatMessage
+from retrivals import load_embeddings_from_file, search_query_in_embeddings         
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
 
 # Load environment variables
@@ -340,13 +341,30 @@ async def predict_breakdown(data: MachineData):
 @app.post("/api/repair-manual")
 async def get_repair_manual(request: ChatMessage):
 
-#------------ prompt นี้ รอ ทำ RAG--------------------------------
-
     """ค้นหาคู่มือการซ่อม (ใช้ AI ตอบคำถาม)"""
     try:
+        embeddings_file_path  = "/home/ubuntu/Mit-Hack-Zero-Breakdown/backend/embeddings.json"
+        embeddings = load_embeddings_from_file(embeddings_file_path)
+        
+        with open("manuls.txt", "r", encoding="utf-8") as file:
+            text_fitz = file.read()  # อ่านเนื้อหาทั้งหมดในไฟล์
+
+        # แบ่งข้อความตามบรรทัด
+        texts_strip = text_fitz.split("\n")  # หรือแบ่งตามพารากราฟได้
+
+        # กรองข้อความว่างออก
+        texts = [text for text in texts_strip if text.strip()]
+
+        # ตรวจสอบว่ามีการรับ query_text จาก request หรือไม่
+        query_text = request.message  # สมมติว่า message จาก request คือคำถามที่ต้องการค้นหา
+
+        # ค้นหาคำถามใน embeddings
+        results = search_query_in_embeddings(query_text, embeddings, texts)
+
         prompt = f"""คุณเป็นผู้เชี่ยวชาญด้านการซ่อมบำรุงเครื่องจักรโรงงานน้ำตาล โดยเฉพาะระบบ Feed Mill
 
-คำถาม: {request.message}
+คำถาม: {query_text}
+โดยใช้เนื้อหาจาก: {results}
 
 กรุณาตอบคำถามเกี่ยวกับการซ่อมบำรุงอย่างละเอียด รวมถึง:
 1. ขั้นตอนการซ่อม
@@ -369,27 +387,11 @@ async def get_repair_manual(request: ChatMessage):
         )
         manual_content = response_body['output']['message']['content'][0]['text']
 
-        # response = bedrock_runtime.invoke_model(
-        #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-        #     body=json.dumps({
-        #         "anthropic_version": "bedrock-2023-05-31",
-        #         "max_tokens": 2048,
-        #         "messages": [
-        #             {
-        #                 "role": "user",
-        #                 "content": prompt
-        #             }
-        #         ]
-        #     })
-        # )
-
-        # response_body = json.loads(response['body'].read())
-        # manual_content = response_body['content'][0]['text']
-
         return {
             "question": request.message,
             "answer": manual_content
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
