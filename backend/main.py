@@ -312,22 +312,36 @@ async def analyze_sensors(data: MachineData):
         -ค่าปกติของ  TempWindingMotorPhase_U และ TempWindingMotorPhase_V และ TempWindingMotorPhase_W อยู่ในช่วง  <105 C
 """
 
-            response = bedrock_runtime.invoke_model(
-                modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 1024,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                })
-            )
+            # response = bedrock_runtime.invoke_model(
+            #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
+            #     body=json.dumps({
+            #         "anthropic_version": "bedrock-2023-05-31",
+            #         "max_tokens": 1024,
+            #         "messages": [
+            #             {
+            #                 "role": "user",
+            #                 "content": prompt
+            #             }
+            #         ]
+            #     })
+            # )
 
-            response_body = json.loads(response['body'].read())
-            maintenance_advice = response_body['content'][0]['text']
+            # response_body = json.loads(response['body'].read())
+            # maintenance_advice = response_body['content'][0]['text']
+            response = bedrock_runtime.converse(
+            modelId="qwen.qwen3-32b-v1:0",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [{"text": prompt}]
+                    }
+                ],
+                inferenceConfig={
+                    "maxTokens": 1024
+                }
+            )
+            maintenance_advice = response['output']['message']['content'][0]['text']
+
         else:
             maintenance_advice = "เครื่องจักรทำงานปกติ ไม่พบความผิดปกติ"
 
@@ -366,27 +380,44 @@ async def predict_breakdown(data: MachineData):
 คะแนนความเสี่ยง: {risk_score}/100
 ระดับความเสี่ยง: {risk_level}
 
-ให้คำทำนายเกี่ยวกับ:
-1. โอกาสที่เครื่องจักรจะเสียหายใน 7 วันข้างหน้า
+รหัสเครื่องจักรนี้คือ ABB M3BP355SMB4
+
+โดยให้คำทำนายเกี่ยวกับ:
+1. โอกาสที่เครื่องจักรจะเสียหาย
 2. อายุการใช้งานโดยประมาณที่เหลืออยู่
 3. ส่วนประกอบที่มีความเสี่ยงสูงสุด"""
+        
+        
+        # response = bedrock_runtime.invoke_model(
+        #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
+        #     body=json.dumps({
+        #         "anthropic_version": "bedrock-2023-05-31",
+        #         "max_tokens": 1024,
+        #         "messages": [
+        #             {
+        #                 "role": "user",
+        #                 "content": prompt
+        #             }
+        #         ]
+        #     })
+        # )
 
-        response = bedrock_runtime.invoke_model(
-            modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            })
+        # response_body = json.loads(response['body'].read())
+        # prediction = response_body['content'][0]['text']
+        # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
+        response = bedrock_runtime.converse(
+            modelId="qwen.qwen3-32b-v1:0",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}]
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": 1024
+            }
         )
-
-        response_body = json.loads(response['body'].read())
-        prediction = response_body['content'][0]['text']
+        prediction = response['output']['message']['content'][0]['text']
 
         return {
             "machine_type": data.machine_type,
