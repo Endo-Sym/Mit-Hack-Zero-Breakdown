@@ -402,8 +402,8 @@ async def predict_breakdown(data: MachineData):
 async def get_repair_manual(request: ChatMessage):
 
     """ค้นหาคู่มือการซ่อม (ใช้ AI ตอบคำถาม)"""
-    try:
-        embeddings_file_path  = "/home/ubuntu/Mit-Hack-Zero-Breakdown/backend/embeddings.json"
+    try: 
+        embeddings_file_path  = "/embeddings.json"
         embeddings = load_embeddings_from_file(embeddings_file_path)
         
         with open("manuls.txt", "r", encoding="utf-8") as file:
@@ -454,6 +454,7 @@ async def get_repair_manual(request: ChatMessage):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/api/chat")
 async def chat_agent(request: ChatMessage):
     """Agentic AI Chat - จัดการคำถามและเลือกฟังก์ชันที่เหมาะสม"""
@@ -466,7 +467,6 @@ async def chat_agent(request: ChatMessage):
 
         return {
             "message": request.message,
-            "detected_function": function_type,
             "response": agent_response
         }
     except Exception as e:
