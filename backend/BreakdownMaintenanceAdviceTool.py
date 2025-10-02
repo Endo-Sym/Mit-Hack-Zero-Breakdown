@@ -2,6 +2,30 @@ from typing import Dict, List, Optional
 
 # Sensor threshold analysis
 class BreakdownMaintenanceAdviceTool:
+
+    @staticmethod
+    def get_tool_spec():
+        return {
+            "toolSpec": {
+                "name": "Breakdown_Maintenance_Advice_Tool",
+                "description": "Provide maintenance advice for machinery based on breakdown data.",
+                "inputSchema": {
+                    "json": {
+                        "type": "object",
+                        "properties": {
+                            "timestamp": {"type": "string", "description": "Timestamp when the data was sent (ISO 8601 format)"},
+                            "machine_type": {"type": "string", "description": "Name of the machine (including Feed Mill 1, Feed Mill 2, Feed Mill 3,Feed Mill 4)"},
+                            "sensor_readings": {
+                                "type": "object",
+                                "description": "Sensor data includes PowerMotor , CurrentMotor , TempBrassBearingDE ,TempBearingMotorNDE ,SpeedMotor , SpeedRoller , TempOilGear , TempWindingMotorPhase_U , TempWindingMotorPhase_V ,TempWindingMotorPhase_W ,Vibration"
+                            }
+                        },
+                        "required": ["timestamp", "machine_type", "sensor_readings"]
+                    }
+                }
+            }
+        }
+
     def analyze_sensors(self, sensor_data: Dict) -> Dict:
         alerts = []
     
