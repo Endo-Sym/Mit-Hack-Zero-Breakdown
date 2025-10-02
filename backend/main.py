@@ -11,6 +11,7 @@ from datetime import datetime
 from io import StringIO
 from dotenv import load_dotenv
 from configs import SensorReadings, MachineData, ChatMessage
+from retrivals import load_embeddings_from_file, search_query_in_embeddings         
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
 from Orchestrator import Orchestrator
 import uploads
@@ -402,10 +403,9 @@ async def get_repair_manual(request: ChatMessage):
 
     """ค้นหาคู่มือการซ่อม (ใช้ AI ตอบคำถาม)"""
     try:
-        # ใช้ path ที่ทำงานได้ทั้ง Windows และ Linux
-        embeddings_file_path = os.path.join(os.path.dirname(__file__), "embeddings.json")
+        embeddings_file_path  = "/home/ubuntu/Mit-Hack-Zero-Breakdown/backend/embeddings.json"
         embeddings = load_embeddings_from_file(embeddings_file_path)
-
+        
         with open("manuls.txt", "r", encoding="utf-8") as file:
             text_fitz = file.read()  # อ่านเนื้อหาทั้งหมดในไฟล์
 

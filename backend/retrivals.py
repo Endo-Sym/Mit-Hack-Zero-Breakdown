@@ -1,7 +1,28 @@
 import json
 import numpy as np
+import fitz  # PyMuPDF
+import boto3
+import json
+import os
 from sklearn.metrics.pairwise import cosine_similarity
 
+
+# สร้าง client สำหรับ AWS Bedrock
+bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
+
+# ฟังก์ชันสำหรับการโหลด embeddings จากไฟล์
+def load_embeddings_from_file(file_path):
+    with open(file_path, 'r') as f:
+        embeddings = json.load(f)
+    return embeddings
+
+def generate_query_embedding(query_text):
+    response = bedrock.invoke_model(
+        modelId="amazon.titan-embed-text-v2:0",
+        body=json.dumps({"inputText": query_text})
+    )
+    response_body = json.loads(response["body"].read())
+    return response_body["embedding"]
 
 # ฟังก์ชันสำหรับการค้นหาคำถามใน embeddings
 def search_query_in_embeddings(query_text, embeddings, texts):

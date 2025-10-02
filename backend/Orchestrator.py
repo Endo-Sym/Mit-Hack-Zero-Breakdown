@@ -28,6 +28,70 @@ class Orchestrator:
         }
         self.bedrockRuntimeClient = boto3.client("bedrock-runtime", region_name=AWS_REGION)
 
+    def run(self):
+        conversation = []
+
+        user_input = self._get_user_input()
+        while user_input is not None:
+            message = {"role": "user", "content": [{"text": user_input}]}
+            conversation.append(message)
+            bedrock_response = self._send_conversation_to_bedrock(conversation)
+            self._process_model_response(bedrock_response, conversation)
+            user_input = self._get_user_input()
+
+    def _send_conversation_to_bedrock(self, conversation):
+        return self.bedrockRuntimeClient.converse(
+            modelId=MODEL_ID,
+            messages=conversation,
+            system=self.system_prompt,
+            toolConfig=self.tool_config,
+        )
+
+    def _process_model_response(self, model_response, conversation):
+        message = model_response["output"]["message"]
+        conversation.append(message)
+
+        if model_response["stopReason"] == "tool_use":
+            self._handle_tool_use(message, conversation)
+        elif model_response["stopReason"] == "end_turn":
+            print("Model response: ", message["content"][0]["text"])
+
+    def _handle_tool_use(self, model_response, conversation):
+        tool_results = []
+        for content_block in model_response["content"]:
+            if "text" in content_block:
+                print(content_block["text"])  # Output model response
+
+            if "toolUse" in content_block:
+                tool_response = self._invoke_tool(content_block["toolUse"])
+                tool_results.append({
+                    "toolResult": {
+                        "toolUseId": tool_response["toolUseId"],
+                        "content": [{"json": tool_response["content"]}],
+                    }
+                })
+
+        conversation.append({"role": "user", "content": tool_results})
+        response = self._send_conversation_to_bedrock(conversation)
+        self._process_model_response(response, conversation)
+
+    def _invoke_tool(self, payload):
+        tool_name = payload["name"]
+        if tool_name == "Breakdown_Prediction_Tool":
+            input_data = payload["input"]
+            response = BreakdownPredictionTool.analyze_sensors(input_data)
+        elif tool_name == "Breakdown_Maintenance_Advice_Tool":
+            input_data = payload.get("input", {})
+            response = BreakdownMaintenanceAdviceTool.analyze_sensors(input_data)
+        else:
+            response = {"error": True, "message": f"Tool {tool_name} not found"}
+        return {"toolUseId": payload["toolUseId"], "content": response}
+
+    @staticmethod
+    def _get_user_input():
+        # This should be replaced with actual input handling (e.g., from a UI or a form)
+        return "Sample user input"  # Placeholder for testing
+
     def run(self, user_input=None):
         """
         Run orchestrator with user input
