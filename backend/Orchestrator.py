@@ -9,8 +9,8 @@ AWS_REGION = "us-west-2"
 MODEL_ID = SupportedModels.CLAUDE_HAIKU.value
 
 SYSTEM_PROMPT = """
-You are an assistant that provides maintenance advice and breakdown predictions using only the Breakdown_Maintenance_Advice_Tool, and Breakdown_Prediction_Tool.
-- Always call Breakdown_Maintenance_Advice_Tool to provide maintenance advice based on sensor data.
+You are an assistant that provides maintenance advice and breakdown predictions using only the Maintenance_Manule_Tool, and Breakdown_Prediction_Tool.
+- Always call Maintenance_Manule_Tool to provide maintenance advice based on sensor data.
 - Always call Breakdown_Prediction_Tool to predict the likelihood of breakdowns based on sensor readings and machine data.
 - Never generate or guess results on your own; always rely on the respective tools.
 - Provide accurate and precise results based on the tool outputs.
@@ -24,7 +24,7 @@ class Orchestrator:
         self.tool_config = {
             "tools": [
                 BreakdownPredictionTool.get_tool_spec(),
-                BreakdownMaintenanceAdviceTool.get_tool_spec()
+                MaintenanceManuleTool.get_tool_spec()
             ]
         }
         self.bedrockRuntimeClient = boto3.client("bedrock-runtime", region_name=AWS_REGION)
@@ -81,7 +81,7 @@ class Orchestrator:
         if tool_name == "Breakdown_Prediction_Tool":
             input_data = payload["input"]
             response = BreakdownPredictionTool.analyze_sensors(input_data)
-        elif tool_name == "Breakdown_Maintenance_Advice_Tool":
+        elif tool_name == "MaintenanceManuleTool":
             input_data = payload.get("input", {})
             response = BreakdownMaintenanceAdviceTool.analyze_sensors(input_data)
         else:
