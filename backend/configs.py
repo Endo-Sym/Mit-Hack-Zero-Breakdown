@@ -1,25 +1,23 @@
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
 # Model
 class SupportedModels(Enum):
     CLAUDE_HAIKU = "arn:aws:bedrock:us-west-2:150965600522:inference-profile/us.anthropic.claude-3-haiku-20240307-v1:0"
 
-# Pydantic models
+# Pydantic models - ใช้ชื่อจาก Frontend โดยตรง
 class SensorReadings(BaseModel):
-    Power_Motor: float
-    Current_Motor: float
-    Speed_Motor: float
-    Speed_Roller: float
-    Temperator_Brass_bearing_DE: float
-    Temperator_Brass_bearing_NDE: float
-    Temperator_Bearing_Motor_DE: float
-    Temperator_Bearing_Motor_NDE: float
-    Temperator_Oil_Gear: float
-    Temperator_Winding_Motor_Phase_U: float
-    Temperator_Winding_Motor_Phase_V: float
-    Temperator_Winding_Motor_Phase_W: float
+    PowerMotor: float
+    CurrentMotor: float
+    SpeedMotor: float
+    SpeedRoller: float
+    TempBrassBearingDE: float
+    TempBearingMotorNDE: float
+    TempOilGear: float
+    TempWindingMotorPhase_U: float
+    TempWindingMotorPhase_V: float
+    TempWindingMotorPhase_W: float
     Vibration: Optional[float] = None
 
 

@@ -37,8 +37,8 @@ class Orchestrator:
         """
         conversation = []
 
-        if user_input is None:
-            user_input = self._get_user_input()
+        user_input = self._get_user_input(user_input)
+
 
         message = {"role": "user", "content": [{"text": user_input}]}
         conversation.append(message)
@@ -99,6 +99,6 @@ class Orchestrator:
         return {"toolUseId": payload["toolUseId"], "content": response}
 
     @staticmethod
-    def _get_user_input():
+    def _get_user_input(user_input):
         # This should be replaced with actual input handling (e.g., from a UI or a form)
-        return "Sample user input"  # Placeholder for testing
+        return user_input  

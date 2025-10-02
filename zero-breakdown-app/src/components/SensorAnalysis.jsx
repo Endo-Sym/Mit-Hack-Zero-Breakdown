@@ -1,85 +1,143 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts'
 import './SensorAnalysis.css'
-import { MdAnalytics, MdOutlineFactory } from 'react-icons/md'
+import { MdAnalytics, MdOutlineFactory, MdUploadFile } from 'react-icons/md'
 import { IoSearch, IoCheckmarkCircle, IoWarning, IoRefresh } from 'react-icons/io5'
 import { BiLoaderAlt } from 'react-icons/bi'
 import { GiCrystalBall } from 'react-icons/gi'
+import { FaTable, FaChartLine } from 'react-icons/fa'
 
 const API_URL = 'http://localhost:8000'
 
+// Threshold values for sensors
+const THRESHOLDS = {
+  PowerMotor: { min: 290, max: 315, unit: 'kW' },
+  CurrentMotor: { min: 280, max: 320, unit: 'Amp' },
+  TempBrassBearingDE: { max: 75, unit: '°C' },
+  TempBearingMotorNDE: { max: 75, unit: '°C' },
+  SpeedMotor: { min: 1470, max: 1500, unit: 'rpm' },
+  TempOilGear: { max: 65, unit: '°C' },
+  TempWindingMotorPhase_U: { max: 105, unit: '°C' },
+  TempWindingMotorPhase_V: { max: 105, unit: '°C' },
+  TempWindingMotorPhase_W: { max: 105, unit: '°C' },
+  Vibration: { max: 1.8, unit: 'mm/s' }
+}
+
 function SensorAnalysis() {
-  const [useUploadedData, setUseUploadedData] = useState(false)
-  const [availableMachines, setAvailableMachines] = useState([])
-  const [selectedMachine, setSelectedMachine] = useState('')
-  const [machineType, setMachineType] = useState('Feed Mill 1')
-  const [sensorData, setSensorData] = useState({
-    PowerMotor: 295,
-    CurrentMotor: 300,
-    TempBrassBearingDE: 65,
-    SpeedMotor: 1485,
-    SpeedRoller: 5.5,
-    TempOilGear: 60,
-    TempBearingMotorNDE: 70,
-    TempWindingMotorPhase_U: 100,
-    TempWindingMotorPhase_V: 98,
-    TempWindingMotorPhase_W: 97,
-    Vibration: 1.5
+  // Load from localStorage on mount
+  const [uploadedCSV, setUploadedCSV] = useState(() => {
+    const saved = localStorage.getItem('sensorAnalysisCSV')
+    return saved ? JSON.parse(saved) : null
   })
+  const [csvData, setCSVData] = useState(() => {
+    const saved = localStorage.getItem('sensorAnalysisData')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [selectedRow, setSelectedRow] = useState(() => {
+    const saved = localStorage.getItem('sensorAnalysisSelectedRow')
+    return saved ? JSON.parse(saved) : null
+  })
+
+  const [uploading, setUploading] = useState(false)
+  const [viewMode, setViewMode] = useState('table') // 'table' or 'chart'
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [predictionResult, setPredictionResult] = useState(null)
 
+  // Save to localStorage whenever data changes
   useEffect(() => {
-    fetchMachines()
-  }, [])
-
-  const fetchMachines = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/machines`)
-      if (response.data.machines && response.data.machines.length > 0) {
-        setAvailableMachines(response.data.machines)
-        setSelectedMachine(response.data.machines[0])
-      }
-    } catch (error) {
-      console.log('No uploaded data available')
+    if (uploadedCSV) {
+      localStorage.setItem('sensorAnalysisCSV', JSON.stringify(uploadedCSV))
     }
-  }
+  }, [uploadedCSV])
 
-  const loadMachineData = async () => {
-    if (!selectedMachine) return
+  useEffect(() => {
+    if (csvData.length > 0) {
+      localStorage.setItem('sensorAnalysisData', JSON.stringify(csvData))
+    }
+  }, [csvData])
 
-    setLoading(true)
+  useEffect(() => {
+    if (selectedRow) {
+      localStorage.setItem('sensorAnalysisSelectedRow', JSON.stringify(selectedRow))
+    }
+  }, [selectedRow])
+
+  const handleCSVUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    setUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('custom_name', `sensor_analysis_${Date.now()}`)
+
     try {
-      const response = await axios.get(`${API_URL}/api/machine-data/${selectedMachine}`)
-      setSensorData(response.data.sensor_readings)
-      setMachineType(selectedMachine)
-      setResult({
-        alerts: response.data.alerts,
-        status_summary: response.data.status_summary,
-        recommended_action: response.data.alerts.length > 0
-          ? 'ข้อมูลถูกโหลดจากฐานข้อมูล กรุณากดวิเคราะห์เพื่อรับคำแนะนำจาก AI'
-          : 'เครื่องจักรทำงานปกติ'
+      const response = await axios.post(`${API_URL}/api/upload-csv`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
+
+      setUploadedCSV({
+        filename: response.data.saved_file,
+        total_rows: response.data.total_rows,
+        machines: response.data.machines,
+        date_range: response.data.date_range
+      })
+
+      // Fetch and display data
+      fetchCSVData(response.data.machines[0])
     } catch (error) {
-      alert(`เกิดข้อผิดพลาด: ${error.response?.data?.detail || error.message}`)
+      alert(`เกิดข้อผิดพลาดในการอัพโหลด: ${error.response?.data?.detail || error.message}`)
     } finally {
-      setLoading(false)
+      setUploading(false)
     }
   }
 
-  const handleInputChange = (field, value) => {
-    setSensorData(prev => ({ ...prev, [field]: parseFloat(value) || 0 }))
+  const fetchCSVData = async (machineId) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/machine-data/${machineId}`, {
+        params: { limit: 10 }
+      })
+
+      // Transform data for table/chart display
+      const transformedData = [{
+        timestamp: response.data.timestamp,
+        machine_id: response.data.machine_id,
+        ...response.data.sensor_readings
+      }]
+
+      setCSVData(transformedData)
+      setSelectedRow(transformedData[0])
+    } catch (error) {
+      console.error('Error fetching CSV data:', error)
+    }
+  }
+
+  const handleCellEdit = (field, value) => {
+    setSelectedRow(prev => ({
+      ...prev,
+      [field]: parseFloat(value) || 0
+    }))
   }
 
   const analyzeSensors = async () => {
+    if (!selectedRow) {
+      alert('กรุณาเลือกข้อมูลที่ต้องการวิเคราะห์')
+      return
+    }
+
     setLoading(true)
     try {
+      const sensorReadings = { ...selectedRow }
+      delete sensorReadings.timestamp
+      delete sensorReadings.machine_id
+
       const response = await axios.post(`${API_URL}/api/analyze-sensors`, {
         timestamp: new Date().toISOString(),
-        machine_type: machineType,
-        sensor_readings: sensorData
+        machine_type: selectedRow.machine_id || 'Feed Mill 1',
+        sensor_readings: sensorReadings
       })
       setResult(response.data)
     } catch (error) {
@@ -90,12 +148,21 @@ function SensorAnalysis() {
   }
 
   const predictBreakdown = async () => {
+    if (!selectedRow) {
+      alert('กรุณาเลือกข้อมูลที่ต้องการทำนาย')
+      return
+    }
+
     setLoading(true)
     try {
+      const sensorReadings = { ...selectedRow }
+      delete sensorReadings.timestamp
+      delete sensorReadings.machine_id
+
       const response = await axios.post(`${API_URL}/api/predict-breakdown`, {
         timestamp: new Date().toISOString(),
-        machine_type: machineType,
-        sensor_readings: sensorData
+        machine_type: selectedRow.machine_id || 'Feed Mill 1',
+        sensor_readings: sensorReadings
       })
       setPredictionResult(response.data)
     } catch (error) {
@@ -105,189 +172,205 @@ function SensorAnalysis() {
     }
   }
 
+  const checkThreshold = (field, value) => {
+    const threshold = THRESHOLDS[field]
+    if (!threshold) return 'normal'
+
+    if (threshold.min && value < threshold.min) return 'warning'
+    if (threshold.max && value > threshold.max) return 'warning'
+    return 'normal'
+  }
+
+  const prepareChartData = () => {
+    if (!selectedRow) return []
+
+    return Object.entries(selectedRow)
+      .filter(([key]) => key !== 'timestamp' && key !== 'machine_id')
+      .map(([key, value]) => ({
+        name: key.replace(/([A-Z])/g, ' $1').trim(),
+        value: value,
+        threshold: THRESHOLDS[key]?.max || THRESHOLDS[key]?.min || null
+      }))
+  }
+
   return (
     <div className="sensor-analysis-container">
       <h2><MdAnalytics style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />วิเคราะห์ข้อมูล Sensor</h2>
 
-      {availableMachines.length > 0 && (
-        <div className="machine-selector-section">
-          <h3><MdOutlineFactory style={{ marginRight: '0.5rem' }} />เลือกเครื่องจักรจากข้อมูลที่อัพโหลด</h3>
-          <div className="machine-selector-controls">
-            <select
-              value={selectedMachine}
-              onChange={(e) => setSelectedMachine(e.target.value)}
-              className="machine-select"
-            >
-              {availableMachines.map((machine) => (
-                <option key={machine} value={machine}>
-                  {machine}
-                </option>
-              ))}
-            </select>
-            <button onClick={loadMachineData} disabled={loading} className="btn-load-data">
-              {loading ? (
-                <><BiLoaderAlt className="spin-icon" /> กำลังโหลด...</>
-              ) : (
-                <><IoRefresh style={{ marginRight: '0.5rem' }} /> โหลดข้อมูลปัจจุบัน</>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="form-section">
-        <label>
-          <strong>ประเภทเครื่องจักร:</strong>
+      {/* CSV Upload Section */}
+      <div className="csv-upload-section glass-panel">
+        <h3><MdUploadFile style={{ marginRight: '0.5rem' }} />อัพโหลดข้อมูล CSV</h3>
+        <div className="upload-area">
           <input
-            type="text"
-            value={machineType}
-            onChange={(e) => setMachineType(e.target.value)}
-            placeholder="Feed Mill 1"
+            type="file"
+            accept=".csv"
+            onChange={handleCSVUpload}
+            disabled={uploading}
+            id="csv-upload"
+            style={{ display: 'none' }}
           />
-        </label>
-
-        <div className="sensor-grid">
-          <label>
-            PowerMotor (kW):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.PowerMotor}
-              onChange={(e) => handleInputChange('PowerMotor', e.target.value)}
-            />
-            <small>ปกติ: 280-320</small>
-          </label>
-
-          <label>
-            CurrentMotor (Amp):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.CurrentMotor}
-              onChange={(e) => handleInputChange('CurrentMotor', e.target.value)}
-            />
-            <small>ปกติ: 270-330</small>
-          </label>
-
-          <label>
-            TempBrassBearingDE (°C):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.TempBrassBearingDE}
-              onChange={(e) => handleInputChange('TempBrassBearingDE', e.target.value)}
-            />
-            <small>ปกติ: &lt;75</small>
-          </label>
-
-          <label>
-            SpeedMotor (rpm):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.SpeedMotor}
-              onChange={(e) => handleInputChange('SpeedMotor', e.target.value)}
-            />
-            <small>ปกติ: 1470-1500</small>
-          </label>
-
-          <label>
-            SpeedRoller (rpm):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.SpeedRoller}
-              onChange={(e) => handleInputChange('SpeedRoller', e.target.value)}
-            />
-          </label>
-
-          <label>
-            TempOilGear (°C):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.TempOilGear}
-              onChange={(e) => handleInputChange('TempOilGear', e.target.value)}
-            />
-            <small>ปกติ: &lt;65</small>
-          </label>
-
-          <label>
-            TempBearingMotorNDE (°C):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.TempBearingMotorNDE}
-              onChange={(e) => handleInputChange('TempBearingMotorNDE', e.target.value)}
-            />
-            <small>ปกติ: &lt;75</small>
-          </label>
-
-          <label>
-            TempWindingMotorPhase_U (°C):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.TempWindingMotorPhase_U}
-              onChange={(e) => handleInputChange('TempWindingMotorPhase_U', e.target.value)}
-            />
-            <small>ปกติ: &lt;115</small>
-          </label>
-
-          <label>
-            TempWindingMotorPhase_V (°C):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.TempWindingMotorPhase_V}
-              onChange={(e) => handleInputChange('TempWindingMotorPhase_V', e.target.value)}
-            />
-            <small>ปกติ: &lt;115</small>
-          </label>
-
-          <label>
-            TempWindingMotorPhase_W (°C):
-            <input
-              type="number"
-              step="0.1"
-              value={sensorData.TempWindingMotorPhase_W}
-              onChange={(e) => handleInputChange('TempWindingMotorPhase_W', e.target.value)}
-            />
-            <small>ปกติ: &lt;115</small>
-          </label>
-
-          <label>
-            Vibration (mm/s):
-            <input
-              type="number"
-              step="0.01"
-              value={sensorData.Vibration}
-              onChange={(e) => handleInputChange('Vibration', e.target.value)}
-            />
-            <small>ดี: &lt;1.8</small>
-          </label>
-        </div>
-
-        <div className="button-group">
-          <button onClick={analyzeSensors} disabled={loading}>
-            {loading ? (
-              <><BiLoaderAlt className="spin-icon" /> กำลังวิเคราะห์...</>
+          <label htmlFor="csv-upload" className={`upload-button ${uploading ? 'disabled' : ''}`}>
+            {uploading ? (
+              <><BiLoaderAlt className="spin-icon" /> กำลังอัพโหลด...</>
             ) : (
-              <><IoSearch style={{ marginRight: '0.5rem' }} /> วิเคราะห์ Sensor</>
+              <><MdUploadFile /> เลือกไฟล์ CSV</>
             )}
-          </button>
-          <button onClick={predictBreakdown} disabled={loading} className="btn-predict">
-            {loading ? (
-              <><BiLoaderAlt className="spin-icon" /> กำลังทำนาย...</>
-            ) : (
-              <><GiCrystalBall style={{ marginRight: '0.5rem' }} /> ทำนาย Zero Breakdown</>
-            )}
-          </button>
+          </label>
+          {uploadedCSV && (
+            <div className="upload-info">
+              <IoCheckmarkCircle style={{ color: '#4ade80' }} />
+              <span>
+                อัพโหลดสำเร็จ: {uploadedCSV.total_rows} แถว |
+                เครื่องจักร: {uploadedCSV.machines.join(', ')} |
+                ช่วงเวลา: {uploadedCSV.date_range}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Data Display Section */}
+      {selectedRow && (
+        <>
+          <div className="view-toggle glass-panel">
+            <button
+              className={viewMode === 'table' ? 'active' : ''}
+              onClick={() => setViewMode('table')}
+            >
+              <FaTable /> ตาราง
+            </button>
+            <button
+              className={viewMode === 'chart' ? 'active' : ''}
+              onClick={() => setViewMode('chart')}
+            >
+              <FaChartLine /> กราฟ
+            </button>
+          </div>
+
+          {viewMode === 'table' ? (
+            <div className="data-table-section glass-panel">
+              <h3><FaTable style={{ marginRight: '0.5rem' }} />ข้อมูล Sensor (แก้ไขได้)</h3>
+              <div className="sensor-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Sensor</th>
+                      <th>ค่าปัจจุบัน</th>
+                      <th>ค่าปกติ</th>
+                      <th>สถานะ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(selectedRow)
+                      .filter(([key]) => key !== 'timestamp' && key !== 'machine_id')
+                      .map(([key, value]) => {
+                        const threshold = THRESHOLDS[key]
+                        const status = checkThreshold(key, value)
+                        return (
+                          <tr key={key} className={status}>
+                            <td>{key.replace(/([A-Z])/g, ' $1').trim()}</td>
+                            <td>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={value}
+                                onChange={(e) => handleCellEdit(key, e.target.value)}
+                                className="editable-cell"
+                              />
+                              {threshold?.unit && <span className="unit"> {threshold.unit}</span>}
+                            </td>
+                            <td>
+                              {threshold?.min && threshold?.max
+                                ? `${threshold.min} - ${threshold.max}`
+                                : threshold?.max
+                                ? `< ${threshold.max}`
+                                : threshold?.min
+                                ? `> ${threshold.min}`
+                                : '-'}
+                            </td>
+                            <td>
+                              {status === 'warning' ? (
+                                <span className="status-badge warning">
+                                  <IoWarning /> เกินค่า
+                                </span>
+                              ) : (
+                                <span className="status-badge normal">
+                                  <IoCheckmarkCircle /> ปกติ
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="data-chart-section glass-panel">
+              <h3><FaChartLine style={{ marginRight: '0.5rem' }} />กราฟแสดงข้อมูล Sensor</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={prepareChartData()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" stroke="#fff" angle={-45} textAnchor="end" height={100} />
+                  <YAxis stroke="#fff" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#8b5cf6"
+                    strokeWidth={3}
+                    dot={{ r: 5, fill: '#8b5cf6' }}
+                    name="ค่าปัจจุบัน"
+                  />
+                  {prepareChartData().map((item, idx) =>
+                    item.threshold ? (
+                      <ReferenceLine
+                        key={idx}
+                        y={item.threshold}
+                        stroke="#ef4444"
+                        strokeDasharray="3 3"
+                        strokeWidth={2}
+                        label={{ value: 'Threshold', fill: '#ef4444', position: 'insideTopRight' }}
+                      />
+                    ) : null
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="button-group">
+            <button onClick={analyzeSensors} disabled={loading} className="btn-analyze">
+              {loading ? (
+                <><BiLoaderAlt className="spin-icon" /> กำลังวิเคราะห์...</>
+              ) : (
+                <><IoSearch style={{ marginRight: '0.5rem' }} /> วิเคราะห์ Sensor</>
+              )}
+            </button>
+            <button onClick={predictBreakdown} disabled={loading} className="btn-predict">
+              {loading ? (
+                <><BiLoaderAlt className="spin-icon" /> กำลังทำนาย...</>
+              ) : (
+                <><GiCrystalBall style={{ marginRight: '0.5rem' }} /> ทำนาย Zero Breakdown</>
+              )}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Results Section */}
       {result && (
-        <div className="result-section">
+        <div className="result-section glass-panel">
           <h3><MdAnalytics style={{ marginRight: '0.5rem' }} />ผลการวิเคราะห์</h3>
 
           {result.alerts.length > 0 ? (
@@ -313,7 +396,7 @@ function SensorAnalysis() {
       )}
 
       {predictionResult && (
-        <div className="result-section prediction-result">
+        <div className="result-section prediction-result glass-panel">
           <h3><GiCrystalBall style={{ marginRight: '0.5rem' }} />ผลการทำนาย Zero Breakdown</h3>
 
           <div className="risk-score-box">

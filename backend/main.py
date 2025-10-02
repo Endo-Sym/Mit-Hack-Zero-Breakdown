@@ -68,6 +68,23 @@ def clean_sensor_data(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+def convert_sensor_names_to_tool_format(sensor_dict: dict) -> dict:
+    """แปลงชื่อ field จาก frontend format เป็น tool format"""
+    mapping = {
+        "PowerMotor": "Power_Motor",
+        "CurrentMotor": "Current_Motor",
+        "SpeedMotor": "Speed_Motor",
+        "SpeedRoller": "Speed_Roller",
+        "TempBrassBearingDE": "Temperator_Brass_bearing_DE",
+        "TempBearingMotorNDE": "Temperator_Bearing_Motor_NDE",
+        "TempOilGear": "Temperator_Oil_Gear",
+        "TempWindingMotorPhase_U": "Temperator_Winding_Motor_Phase_U",
+        "TempWindingMotorPhase_V": "Temperator_Winding_Motor_Phase_V",
+        "TempWindingMotorPhase_W": "Temperator_Winding_Motor_Phase_W",
+        "Vibration": "Vibration"
+    }
+    return {mapping.get(k, k): v for k, v in sensor_dict.items()}
+
 # API Endpoints
 @app.get("/")
 def read_root():
@@ -243,7 +260,9 @@ async def analyze_sensors(data: MachineData):
     """วิเคราะห์ข้อมูล sensor และให้คำแนะนำ"""
     try:
         sensor_dict = data.sensor_readings.model_dump()
-        analysis = maintenance_tool.analyze_sensors(sensor_dict)
+        # แปลงชื่อ field ให้ตรงกับ tool format
+        sensor_dict_for_tool = convert_sensor_names_to_tool_format(sensor_dict)
+        analysis = maintenance_tool.analyze_sensors(sensor_dict_for_tool)
 
 #------------ prompt นี้ รอ ทำ RAG--------------------------------
         # Generate maintenance advice using AWS Bedrock
@@ -327,7 +346,9 @@ async def predict_breakdown(data: MachineData):
     """ทำนายความเสี่ยงของการพังของเครื่องจักร"""
     try:
         sensor_dict = data.sensor_readings.model_dump()
-        analysis = maintenance_tool.analyze_sensors(sensor_dict)
+        # แปลงชื่อ field ให้ตรงกับ tool format
+        sensor_dict_for_tool = convert_sensor_names_to_tool_format(sensor_dict)
+        analysis = maintenance_tool.analyze_sensors(sensor_dict_for_tool)
 
         # Calculate risk score
         risk_score = len(analysis['alerts']) * 10
@@ -378,129 +399,38 @@ async def predict_breakdown(data: MachineData):
 
 @app.post("/api/repair-manual")
 async def get_repair_manual(request: ChatMessage):
-    """ค้นหาคู่มือการซ่อม (ใช้ RAG จาก PDF embeddings)"""
+
+    """ค้นหาคู่มือการซ่อม (ใช้ AI ตอบคำถาม)"""
     try:
-        # 1. สร้าง embedding จากคำถาม
-        question_embedding_response = bedrock_runtime.invoke_model(
-            modelId="amazon.titan-embed-text-v2:0",
-            body=json.dumps({"inputText": request.message})
-        )
-        question_embedding = json.loads(question_embedding_response["body"].read())["embedding"]
+        # ใช้ path ที่ทำงานได้ทั้ง Windows และ Linux
+        embeddings_file_path = os.path.join(os.path.dirname(__file__), "embeddings.json")
+        embeddings = load_embeddings_from_file(embeddings_file_path)
 
-        # 2. ค้นหา embeddings ที่เกี่ยวข้องจากไฟล์ที่อัปโหลด
-        embedding_files = uploads.list_embedding_files()
+        with open("manuls.txt", "r", encoding="utf-8") as file:
+            text_fitz = file.read()  # อ่านเนื้อหาทั้งหมดในไฟล์
 
-        relevant_contexts = []
-        if embedding_files:
-            for file_info in embedding_files[:3]:  # ใช้ 3 ไฟล์ล่าสุด
-                try:
-                    embedding_data = uploads.load_embeddings_from_file(file_info['path'])
-                    texts = embedding_data.get('texts', [])
-                    embeddings = embedding_data.get('embeddings', [])
+        # แบ่งข้อความตามบรรทัด
+        texts_strip = text_fitz.split("\n")  # หรือแบ่งตามพารากราฟได้
 
-                    # คำนวณ cosine similarity
-                    similarities = []
-                    for idx, emb in enumerate(embeddings):
-                        # Cosine similarity
-                        dot_product = sum(a * b for a, b in zip(question_embedding, emb))
-                        norm_q = sum(a * a for a in question_embedding) ** 0.5
-                        norm_e = sum(b * b for b in emb) ** 0.5
-                        similarity = dot_product / (norm_q * norm_e) if (norm_q * norm_e) > 0 else 0
-                        similarities.append((similarity, texts[idx]))
+        # กรองข้อความว่างออก
+        texts = [text for text in texts_strip if text.strip()]
 
-                    # เอา top 3 ที่มีความคล้ายมากที่สุด
-                    top_contexts = sorted(similarities, key=lambda x: x[0], reverse=True)[:3]
-                    relevant_contexts.extend([ctx[1] for ctx in top_contexts if ctx[0] > 0.5])
-                except Exception as e:
-                    print(f"Error loading embedding file {file_info['filename']}: {e}")
-                    continue
+        # ตรวจสอบว่ามีการรับ query_text จาก request หรือไม่
+        query_text = request.message  # สมมติว่า message จาก request คือคำถามที่ต้องการค้นหา
 
-        # 3. สร้าง prompt พร้อม context จาก RAG
-        context_text = "\n\n".join(relevant_contexts) if relevant_contexts else "ไม่พบข้อมูลจากคู่มือ"
+        # ค้นหาคำถามใน embeddings
+        results = search_query_in_embeddings(query_text, embeddings, texts)
 
         prompt = f"""คุณเป็นผู้เชี่ยวชาญด้านการซ่อมบำรุงเครื่องจักรโรงงานน้ำตาล โดยเฉพาะระบบ Feed Mill
 
-ข้อมูลจากคู่มือการซ่อมบำรุง:
-{context_text}
+คำถาม: {query_text}
+โดยใช้เนื้อหาจาก: {results}
 
-คำถาม: {request.message}
-
-กรุณาตอบคำถามเกี่ยวกับการซ่อมบำรุงอย่างละเอียดโดยอิงจากข้อมูลจากคู่มือข้างต้น รวมถึง:
-1. ขั้นตอนการซ่อม
-2. อุปกรณ์ที่ต้องใช้
-3. ข้อควรระวัง
-4. เวลาที่ใช้โดยประมาณ
-
-หากข้อมูลในคู่มือไม่เพียงพอ ให้แจ้งผู้ใช้และให้คำแนะนำทั่วไป"""
-
-        # 4. ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
-        response_body = bedrock_runtime.converse(
-            modelId="qwen.qwen3-32b-v1:0",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [{"text": prompt}]
-                }
-            ],
-            inferenceConfig={
-                "maxTokens": 2048
-            }
-        )
-        manual_content = response_body['output']['message']['content'][0]['text']
-
-        # response = bedrock_runtime.invoke_model(
-        #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-        #     body=json.dumps({
-        #         "anthropic_version": "bedrock-2023-05-31",
-        #         "max_tokens": 2048,
-        #         "messages": [
-        #             {
-        #                 "role": "user",
-        #                 "content": prompt
-        #             }
-        #         ]
-        #     })
-        # )
-
-        # response_body = json.loads(response['body'].read())
-        # manual_content = response_body['content'][0]['text']
-
-        return {
-            "question": request.message,
-            "answer": manual_content,
-            "sources_found": len(relevant_contexts),
-            "total_files_searched": len(embedding_files)
-        }
-    except Exception as e:
-        import traceback
-        print(f"Error in /api/repair-manual: {str(e)}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/chat")
-async def chat_agent(request: ChatMessage):
-    """Agentic AI Chat - จัดการคำถามและเลือกฟังก์ชันที่เหมาะสม"""
-    try:
-        print(f"Received chat request: {request.message}")
-        # Determine which function to use based on message
-        message_lower = request.message.lower()
-
-        if any(word in message_lower for word in ['ทำนาย', 'พยากรณ์', 'predict', 'breakdown', 'เสียหาย']):
-            function_type = "prediction"
-        elif any(word in message_lower for word in ['ซ่อม', 'repair', 'manual', 'คู่มือ', 'วิธี']):
-            function_type = "repair_manual"
-        else:
-            function_type = "general"
-
-        prompt = f"""คุณเป็น AI Agent ที่ช่วยจัดการระบบ Zero Breakdown Prediction
-
-คำถาม/คำสั่งจากผู้ใช้: {request.message}
-
-ประเภทคำถาม: {function_type}
-
-กรุณาตอบคำถามหรือแนะนำผู้ใช้ว่าต้องใช้ฟังก์ชันใดในการทำงาน:
-1. ฟังก์ชันทำนาย Zero Breakdown - สำหรับวิเคราะห์ sensor และทำนายการเสียหาย
-2. ฟังก์ชันคู่มือการซ่อม - สำหรับค้นหาวิธีการซ่อมและข้อมูลทางเทคนิค"""
+กรุณาตอบคำถามเกี่ยวกับการซ่อมบำรุงอย่างละเอียด รวมถึง:
+ขั้นตอนการซ่อม
+อุปกรณ์ที่ต้องใช้
+ข้อควรระวัง
+เวลาที่ใช้โดยประมาณ"""
 
         # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
         response_body = bedrock_runtime.converse(
@@ -515,27 +445,28 @@ async def chat_agent(request: ChatMessage):
                 "maxTokens": 1024
             }
         )
-        agent_response = response_body['output']['message']['content'][0]['text']
-        # response = bedrock_runtime.invoke_model(
-        #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-        #     body=json.dumps({
-        #         "anthropic_version": "bedrock-2023-05-31",
-        #         "max_tokens": 1024,
-        #         "messages": [
-        #             {
-        #                 "role": "user",
-        #                 "content": prompt
-        #             }
-        #         ]
-        #     })
-        # )
+        manual_content = response_body['output']['message']['content'][0]['text']
 
-        # response_body = json.loads(response['body'].read())
-        # agent_response = response_body['content'][0]['text']
+        return {
+            "question": request.message,
+            "answer": manual_content
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/api/chat")
+async def chat_agent(request: ChatMessage):
+    """Agentic AI Chat - จัดการคำถามและเลือกฟังก์ชันที่เหมาะสม"""
+    try:
+        print(f"Received chat request: {request.message}")
+        # Determine which function to use based on message
+        messager = request.message
+        Host_Agent = Orchestrator(messager)
+        agent_response=Host_Agent.run(messager) 
 
         return {
             "message": request.message,
-            "detected_function": function_type,
+            
             "response": agent_response
         }
     except Exception as e:

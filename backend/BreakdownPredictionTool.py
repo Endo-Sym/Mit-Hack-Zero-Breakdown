@@ -71,7 +71,6 @@ class BreakdownPredictionTool:
                 "Vibration": vibration
             }
         }
-
     @staticmethod
     def get_tool_spec():
         return {
@@ -83,55 +82,55 @@ class BreakdownPredictionTool:
                         "type": "object",
                         "properties": {
                             "Power_Motor": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Power consumed by the motor (kW)."
                             },
                             "Current_Motor": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Current draw by the motor (A)."
                             },
                             "Temperator_Brass_bearing_DE": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the brass bearing (°C)."
                             },
                             "Temperator_Brass_bearing_NDE": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the brass bearing (°C)."
                             },
                             "Temperator_Bearing_Motor_DE": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the motor bearing (°C)."
                             },
                             "Temperator_Bearing_Motor_NDE": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the motor bearing (°C)."
                             },
                             "Speed_Motor": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Speed of the motor (rpm)."
                             },
                             "Speed_Roller": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Speed of the roller (rpm)."
                             },
                             "Temperator_Oil_Gear": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the oil gear (°C)."
                             },
                             "Temperator_Winding_Motor_Phase_U": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the winding motor (Phase U)."
                             },
                             "Temperator_Winding_Motor_Phase_V": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the winding motor (Phase V)."
                             },
                             "Temperator_Winding_Motor_Phase_W": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Temperature of the winding motor (Phase W)."
                             },
                             "Vibration": {
-                                "type": "number",
+                                "type": "float",
                                 "description": "Vibration level of the machine (mm/s)."
                             }
                         },
@@ -153,4 +152,8 @@ class BreakdownPredictionTool:
                     }
                 }
             }
-        }
+
+                }
+        
+            
+        
