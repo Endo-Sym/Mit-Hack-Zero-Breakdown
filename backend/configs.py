@@ -8,16 +8,16 @@ class SupportedModels(Enum):
 
 # Pydantic models
 class SensorReadings(BaseModel):
-    PowerMotor: float
-    CurrentMotor: float
-    TempBrassBearingDE: float
-    SpeedMotor: float
-    SpeedRoller: float
-    TempOilGear: float
-    TempBearingMotorNDE: float
-    TempWindingMotorPhase_U: float
-    TempWindingMotorPhase_V: float
-    TempWindingMotorPhase_W: float
+    Power_Motor: float
+    Current_Motor: float
+    Speed_Motor: float
+    Speed_Roller: float
+    Temperator_Brass_bearing_DE: float
+    Temperator_Brass_bearing_NDE: float
+    Temperator_Oil_Gear: float
+    Temperator_Winding_Motor_Phase_U: float
+    Temperator_Winding_Motor_Phase_V: float
+    Temperator_Winding_Motor_Phase_W: float
     Vibration: Optional[float] = None
 
 

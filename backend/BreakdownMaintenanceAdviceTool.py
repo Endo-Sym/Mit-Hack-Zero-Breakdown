@@ -30,7 +30,7 @@ class BreakdownMaintenanceAdviceTool:
         alerts = []
     
         # PowerMotor thresholds (kW)
-        power = sensor_data.get('PowerMotor', 0)
+        power = sensor_data.get('Power_Motor', 0)
         if 290 <= power <= 315:
             status_power = "ปกติ"
         elif (270 <= power < 290) or (315 < power <= 325):          
@@ -45,7 +45,7 @@ class BreakdownMaintenanceAdviceTool:
 
 
         # CurrentMotor thresholds (Amp)
-        current = sensor_data.get('CurrentMotor', 0)
+        current = sensor_data.get('Current_Motor', 0)
         if 280 <= current <= 320:
             status_current = "ปกติ"
         elif (260 <= current < 280) or (320 < current <= 330):
@@ -57,23 +57,52 @@ class BreakdownMaintenanceAdviceTool:
         else:
             status_current = "เสียหาย"
             alerts.append(f"CurrentMotor: มีสถานะเป็น{status_current} มีค่า {current} Amp คือ มีความเสี่ยงที่เครื่องหยุดทำงานโดยสมบูรณ์")
-
-        # Temperature sensors brassDE (°C)
-        temp_brass = sensor_data.get('TempBrassBearingDE', 0)
-        if temp_brass <= 75:
-            status_brass = "ปกติ"
-        elif 75 < temp_brass <= 85:
-            status_brass = "ผิดปกติ"
-            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_brass} มีค่า {temp_brass}°C คือ มีสิทธิ์ที่ระบบจะหล่อลื่นผิดปกติ")
-        elif 85 < temp_brass <= 95:
-            status_brass = "เสี่ยง"
-            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_brass} มีค่า {temp_brass}°C คือ มีความเสี่ยงที่ระบบหล่อลื่นผิดปกติ")
-        else:
-            status_brass = "เสียหาย"
-            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_brass} มีค่า {temp_brass}°C คือ มีความเสี่ยงที่ เครื่องหยุดทำงานโดยสมบูรณ์และมีความเสี่ยงที่แบริ่งสึก, จาระบีหมด, alignment ผิด")
         
-        # Temperature sensors NDE (°C)
-        temp_motor_nde = sensor_data.get('TempBearingMotorNDE', 0)
+        # Temperature sensors brassDE (°C)
+        temp_brass_de = sensor_data.get('Temperator_Brass_bearing_DE', 0)
+        if temp_brass_de <= 75:
+            status_brass_de = "ปกติ"
+        elif 75 < temp_brass_de <= 85:
+            status_brass_de = "ผิดปกติ"
+            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_brass_de} มีค่า {temp_brass_de}°C คือ มีสิทธิ์ที่ระบบจะหล่อลื่นผิดปกติ")
+        elif 85 < temp_brass_de <= 95:
+            status_brass_de = "เสี่ยง"
+            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_brass_de} มีค่า {temp_brass_de}°C คือ มีความเสี่ยงที่ระบบหล่อลื่นผิดปกติ")
+        else:
+            status_brass_de = "เสียหาย"
+            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_brass_de} มีค่า {temp_brass_de}°C คือ มีความเสี่ยงที่ เครื่องหยุดทำงานโดยสมบูรณ์และมีความเสี่ยงที่แบริ่งสึก, จาระบีหมด, alignment ผิด")
+        
+
+        # Temperature sensors brassNDE (°C)
+        temp_brass_nde = sensor_data.get('Temperator_Brass_bearing_NDE', 0)
+        if temp_brass_nde <= 75:
+            status_brass_nde = "ปกติ"
+        elif 75 < temp_brass_nde <= 85:
+            status_brass_nde = "ผิดปกติ"
+            alerts.append(f"TemperatorBrassbearingNDE: มีสถานะเป็น{status_brass_nde} มีค่า {temp_brass_nde}°C คือ มีสิทธิ์ที่ระบบจะหล่อลื่นผิดปกติ")
+        elif 85 < temp_brass_nde <= 95:
+            status_brass_nde = "เสี่ยง"
+            alerts.append(f"TemperatorBrassbearingNDE: มีสถานะเป็น{status_brass_nde} มีค่า {temp_brass_nde}°C คือ มีความเสี่ยงที่ระบบหล่อลื่นผิดปกติ")
+        else:
+            status_brass_nde = "เสียหาย"
+            alerts.append(f"TemperatorBrassbearingNDE: มีสถานะเป็น{status_brass_nde} มีค่า {temp_brass_nde}°C คือ มีความเสี่ยงที่ เครื่องหยุดทำงานโดยสมบูรณ์และมีความเสี่ยงที่แบริ่งสึก, จาระบีหมด, alignment ผิด")
+        
+        # Temperature sensors motorDE (°C)
+        temp_motor_de = sensor_data.get('Temperator_Bearing_Motor_DE', 0)
+        if temp_motor_de <= 75:
+            status_motor_de = "ปกติ"
+        elif 75 < temp_motor_de <= 85:
+            status_motor_de = "ผิดปกติ"
+            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_motor_de} มีค่า {temp_motor_de}°C คือ มีสิทธิ์ที่ระบบจะหล่อลื่นผิดปกติ")
+        elif 85 < temp_motor_de <= 95:
+            status_motor_de = "เสี่ยง"
+            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_motor_de} มีค่า {temp_motor_de}°C คือ มีความเสี่ยงที่ระบบหล่อลื่นผิดปกติ")
+        else:
+            status_motor_de = "เสียหาย"
+            alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_motor_de} มีค่า {temp_motor_de}°C คือ มีความเสี่ยงที่ เครื่องหยุดทำงานโดยสมบูรณ์และมีความเสี่ยงที่แบริ่งสึก, จาระบีหมด, alignment ผิด")
+
+        # Temperature sensors motorNDE (°C)
+        temp_motor_nde = sensor_data.get('Temperator_Bearing_Motor_NDE', 0)
         if temp_motor_nde <= 75:
             status_motor_nde = "ปกติ"
         elif 75 < temp_motor_nde <= 85:
@@ -87,7 +116,7 @@ class BreakdownMaintenanceAdviceTool:
             alerts.append(f"TempBrassBearingDE: มีสถานะเป็น{status_motor_nde} มีค่า {temp_motor_nde}°C คือ มีความเสี่ยงที่ เครื่องหยุดทำงานโดยสมบูรณ์และมีความเสี่ยงที่แบริ่งสึก, จาระบีหมด, alignment ผิด")
 
         # Speed Motor (rpm)
-        speed_motor = sensor_data.get('SpeedMotor', 0)
+        speed_motor = sensor_data.get('Speed_Motor', 0)
         if 1470 <= speed_motor <= 1500:
             status_speed = "ปกติ"
         elif (1450 <= speed_motor < 1470) or (1500 < speed_motor <= 1510):
@@ -101,7 +130,7 @@ class BreakdownMaintenanceAdviceTool:
             alerts.append(f"SpeedMotor: มีสถานะเป็น{status_speed} มีค่า {speed_motor} rpm คือ มีความเสี่ยงที่เครื่องหยุดทำงานโดยสมบูรณ์")
         
         # Speed Roller (rpm)
-        speed_roller = sensor_data.get('SpeedRoller',0)
+        speed_roller = sensor_data.get('Speed_Roller',0)
         calculated_speed_roller = speed_motor / 270
 
         normal_range = calculated_speed_roller
@@ -125,7 +154,7 @@ class BreakdownMaintenanceAdviceTool:
 
 
         # TempOilGear (°C)
-        temp_oil = sensor_data.get('TempOilGear', 0)
+        temp_oil = sensor_data.get('Temperator_Oil_Gear', 0)
         if temp_oil < 65:
             status_oil = "ปกติ"
         elif 65 <= temp_oil <= 75:
@@ -139,9 +168,9 @@ class BreakdownMaintenanceAdviceTool:
             alerts.append(f"TempOilGear: มีสถานะเป็น{status_oil} มีค่า {temp_oil}°C คือ มีความเสี่ยงที่ เครื่องหยุดทำงานโดยสมบูรณ์")
 
         # Winding temperatures (°C)
-        temp_u = sensor_data.get('TempWindingMotorPhase_U', 0)
-        temp_v = sensor_data.get('TempWindingMotorPhase_V', 0)
-        temp_w = sensor_data.get('TempWindingMotorPhase_W', 0)
+        temp_u = sensor_data.get('Temperator_Winding_Motor_Phase_U', 0)
+        temp_v = sensor_data.get('Temperator_Winding_Motor_Phase_V', 0)
+        temp_w = sensor_data.get('Temperator_Winding_Motor_Phase_W', 0)
 
         for phase, temp in [('U', temp_u), ('V', temp_v), ('W', temp_w)]:
             if temp < 105:
@@ -170,21 +199,23 @@ class BreakdownMaintenanceAdviceTool:
                 vib_status = "Unsatisfactory"
                 alerts.append(f"Vibration: มีสถานะเป็น{vib_status} และมีการสั่นสะเทือนสูงเกินไป {vibration} mm/s อยู่ในระดับที่มีเสี่ยงต่อความเสียหาย ต้องหยุดเครื่อง")
         else:
-            vib_status = "No Data"
+            vib_status = "No information"
 
         return {
             "alerts": alerts,
             "status_summary": {
-                "power": status_power,
-                "current": status_current,
-                "temp_brass_de": status_brass,
-                "temp_motor_nde": status_motor_nde,
-                "speed_motor": status_speed,
-                "speed_roller": status_speed_roller,    
-                "temp_oil": status_oil,
-                "temp_winding_u": status_temp_phase,
-                "temp_winding_v": status_temp_phase,    
-                "temp_winding_w": status_temp_phase,        
-                "vibration": vib_status,    
+                "Power_Moto": status_power,
+                "Current_Motor": status_current,
+                "Temperator_Brass_bearing_DE": status_brass_de,
+                "Temperator_Brass_bearing_NDE": status_brass_nde,
+                "Temperator_Bearing_Motor_DE": status_motor_de,
+                "Temperator_Bearing_Motor_NDE": status_motor_nde,
+                "Speed_Motor": status_speed,
+                "Speed_Roller": status_speed_roller,    
+                "Temperator_Oil_Gear": status_oil,
+                "Temperator_Winding_Motor_Phase_U": status_temp_phase,
+                "Temperator_Winding_Motor_Phase_V": status_temp_phase,    
+                "Temperator_Winding_Motor_Phase_W": status_temp_phase,        
+                "Vibration": vib_status,    
           }
         }
