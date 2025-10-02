@@ -2,13 +2,12 @@ import { useState } from 'react'
 import './App.css'
 import ChatInterface from './components/ChatInterface'
 import SensorAnalysis from './components/SensorAnalysis'
-import ROICalculator from './components/ROICalculator'
 import RepairManual from './components/RepairManual'
 import Dashboard from './components/Dashboard'
 import Settings from './components/Settings'
 import { IoChatbubbleEllipses, IoSettings } from "react-icons/io5"
 import { MdAnalytics, MdDashboard } from "react-icons/md"
-import { FaCalculator, FaTools } from "react-icons/fa"
+import { FaTools } from "react-icons/fa"
 
 function App() {
   const [activeTab, setActiveTab] = useState('chat')
@@ -43,13 +42,6 @@ function App() {
             <span className="nav-text">วิเคราะห์ Sensor</span>
           </button>
           <button
-            className={activeTab === 'roi' ? 'nav-item active' : 'nav-item'}
-            onClick={() => setActiveTab('roi')}
-          >
-            <FaCalculator className="nav-icon" />
-            <span className="nav-text">คำนวณ ROI</span>
-          </button>
-          <button
             className={activeTab === 'manual' ? 'nav-item active' : 'nav-item'}
             onClick={() => setActiveTab('manual')}
           >
@@ -82,9 +74,6 @@ function App() {
             {activeTab === 'sensor' && (
               <><MdAnalytics style={{ marginRight: '0.5rem' }} /> วิเคราะห์ข้อมูล Sensor</>
             )}
-            {activeTab === 'roi' && (
-              <><FaCalculator style={{ marginRight: '0.5rem' }} /> คำนวณ ROI</>
-            )}
             {activeTab === 'manual' && (
               <><FaTools style={{ marginRight: '0.5rem' }} /> คู่มือการซ่อม</>
             )}
@@ -98,7 +87,6 @@ function App() {
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'chat' && <ChatInterface />}
           {activeTab === 'sensor' && <SensorAnalysis />}
-          {activeTab === 'roi' && <ROICalculator />}
           {activeTab === 'manual' && <RepairManual />}
           {activeTab === 'settings' && <Settings />}
         </div>

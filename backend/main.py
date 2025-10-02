@@ -10,7 +10,7 @@ import numpy as np
 from datetime import datetime
 from io import StringIO
 from dotenv import load_dotenv
-from configs import SensorReadings, MachineData, ChatMessage, ROIRequest
+from configs import SensorReadings, MachineData, ChatMessage
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
 
 # Load environment variables
@@ -337,78 +337,6 @@ async def predict_breakdown(data: MachineData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/calculate-roi")
-async def calculate_roi(request: ROIRequest):
-    """คำนวณ ROI ของการซ่อมบำรุงในช่วงเวลาต่างๆ"""
-    try:
-        # Calculate efficiency loss
-        efficiency_current = request.current_health_percentage / 100
-        efficiency_comparison = request.comparison_health_percentage / 100
-
-        # Estimate days until breakdown
-        days_until_breakdown_current = (100 - request.current_health_percentage) * 2
-        days_until_breakdown_comparison = (100 - request.comparison_health_percentage) * 2
-
-        # Production loss
-        production_loss_current = request.daily_production_value * (1 - efficiency_current) * days_until_breakdown_current
-        production_loss_comparison = request.daily_production_value * (1 - efficiency_comparison) * days_until_breakdown_comparison
-
-        # ROI calculation
-        savings = production_loss_comparison - production_loss_current
-        roi_percentage = ((savings - request.repair_cost) / request.repair_cost) * 100 if request.repair_cost > 0 else 0
-
-        prompt = f"""วิเคราะห์ ROI ของการซ่อมบำรุงเครื่องจักร:
-
-        สถานการณ์ปัจจุบัน:
-        - สุขภาพเครื่องจักร: {request.current_health_percentage}%
-        - ประมาณการวันก่อนเสียหาย: {days_until_breakdown_current:.0f} วัน
-        - การสูญเสียจากประสิทธิภาพลดลง: {production_loss_current:,.2f} บาท
-
-        สถานการณ์เปรียบเทียบ (ถ้าซ่อมที่ {request.comparison_health_percentage}%):
-        - ประมาณการวันก่อนเสียหาย: {days_until_breakdown_comparison:.0f} วัน
-        - การสูญเสียจากประสิทธิภาพลดลง: {production_loss_comparison:,.2f} บาท
-
-        ค่าใช้จ่ายในการซ่อม: {request.repair_cost:,.2f} บาท
-        ผลตอบแทนจากการลงทุน (ROI): {roi_percentage:.2f}%
-
-        กรุณาอธิบายผลการวิเคราะห์และให้คำแนะนำว่าควรซ่อมตอนไหนดีที่สุด"""
-        
-        body = json.dumps({
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "max_tokens": 1024
-        })
-
-        # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
-        response_body = bedrock_runtime.converse(
-            modelId="qwen.qwen3-32b-v1:0",
-            body=body
-        )
-        analysis= response_body['output']['message']['content'][0]['text']
-
-        return {
-            "current_scenario": {
-                "health_percentage": request.current_health_percentage,
-                "days_until_breakdown": round(days_until_breakdown_current, 1),
-                "production_loss": round(production_loss_current, 2)
-            },
-            "comparison_scenario": {
-                "health_percentage": request.comparison_health_percentage,
-                "days_until_breakdown": round(days_until_breakdown_comparison, 1),
-                "production_loss": round(production_loss_comparison, 2)
-            },
-            "repair_cost": request.repair_cost,
-            "savings": round(savings, 2),
-            "roi_percentage": round(roi_percentage, 2),
-            "analysis": analysis
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/api/repair-manual")
 async def get_repair_manual(request: ChatMessage):
 
@@ -425,22 +353,21 @@ async def get_repair_manual(request: ChatMessage):
 2. อุปกรณ์ที่ต้องใช้
 3. ข้อควรระวัง
 4. เวลาที่ใช้โดยประมาณ"""
-        body = json.dumps({
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "max_tokens": 1024
-        })
 
         # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
-        response_body = client.converse(
+        response_body = bedrock_runtime.converse(
             modelId="qwen.qwen3-32b-v1:0",
-            body=body
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}]
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": 1024
+            }
         )
-        manual_content= response_body['output']['message']['content'][0]['text']
+        manual_content = response_body['output']['message']['content'][0]['text']
 
         # response = bedrock_runtime.invoke_model(
         #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
@@ -470,13 +397,12 @@ async def get_repair_manual(request: ChatMessage):
 async def chat_agent(request: ChatMessage):
     """Agentic AI Chat - จัดการคำถามและเลือกฟังก์ชันที่เหมาะสม"""
     try:
+        print(f"Received chat request: {request.message}")
         # Determine which function to use based on message
         message_lower = request.message.lower()
 
         if any(word in message_lower for word in ['ทำนาย', 'พยากรณ์', 'predict', 'breakdown', 'เสียหาย']):
             function_type = "prediction"
-        elif any(word in message_lower for word in ['roi', 'กำไร', 'ขาดทุน', 'คุ้มค่า', 'ผลตอบแทน']):
-            function_type = "roi"
         elif any(word in message_lower for word in ['ซ่อม', 'repair', 'manual', 'คู่มือ', 'วิธี']):
             function_type = "repair_manual"
         else:
@@ -490,27 +416,22 @@ async def chat_agent(request: ChatMessage):
 
 กรุณาตอบคำถามหรือแนะนำผู้ใช้ว่าต้องใช้ฟังก์ชันใดในการทำงาน:
 1. ฟังก์ชันทำนาย Zero Breakdown - สำหรับวิเคราะห์ sensor และทำนายการเสียหาย
-2. ฟังก์ชันคำนวณ ROI - สำหรับคำนวณผลตอบแทนของการซ่อมในช่วงเวลาต่างๆ
-3. ฟังก์ชันคู่มือการซ่อม - สำหรับค้นหาวิธีการซ่อมและข้อมูลทางเทคนิค"""
-        
-
-
-        body = json.dumps({
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "max_tokens": 1024
-        })
+2. ฟังก์ชันคู่มือการซ่อม - สำหรับค้นหาวิธีการซ่อมและข้อมูลทางเทคนิค"""
 
         # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
         response_body = bedrock_runtime.converse(
             modelId="qwen.qwen3-32b-v1:0",
-            body=body
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}]
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": 1024
+            }
         )
-        agent_response= response_body['output']['message']['content'][0]['text']
+        agent_response = response_body['output']['message']['content'][0]['text']
         # response = bedrock_runtime.invoke_model(
         #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
         #     body=json.dumps({
@@ -534,6 +455,9 @@ async def chat_agent(request: ChatMessage):
             "response": agent_response
         }
     except Exception as e:
+        import traceback
+        print(f"Error in /api/chat: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
