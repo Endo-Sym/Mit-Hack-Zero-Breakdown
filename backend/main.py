@@ -9,8 +9,12 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from io import StringIO
+from dotenv import load_dotenv
 from configs import SensorReadings, MachineData, ChatMessage, ROIRequest
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
+
+# Load environment variables
+load_dotenv()
 app = FastAPI(title="MITR Phol_Zero Breakdown Prediction API")
 
 # CORS middleware
@@ -377,7 +381,7 @@ async def calculate_roi(request: ROIRequest):
         })
 
         # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
-        response_body = client.converse(
+        response_body = bedrock_runtime.converse(
             modelId="qwen.qwen3-32b-v1:0",
             body=body
         )
@@ -483,7 +487,7 @@ async def chat_agent(request: ChatMessage):
         })
 
         # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
-        response_body = client.converse(
+        response_body = bedrock_runtime.converse(
             modelId="qwen.qwen3-32b-v1:0",
             body=body
         )
