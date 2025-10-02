@@ -368,18 +368,28 @@
   border-color: rgba(236, 72, 153, 0.4);
 }
 
-.risk-score-box {
+/* ML Prediction Header */
+.ml-prediction-header {
   display: flex;
-  justify-content: center;
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.risk-score-box {
+  flex: 1;
+  min-width: 250px;
 }
 
 .risk-badge {
   text-align: center;
   padding: 2rem;
   border-radius: 16px;
-  min-width: 200px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .risk-badge.risk-ต่ำ {
@@ -410,8 +420,110 @@
   font-size: 1.1rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.5rem;
 }
 
+.risk-probability {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.5rem;
+}
+
+/* Model Info Badge */
+.model-info-badge {
+  flex: 1;
+  min-width: 250px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.model-type {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #a78bfa;
+  text-align: center;
+  padding: 0.75rem;
+  background: rgba(167, 139, 250, 0.1);
+  border-radius: 8px;
+}
+
+.anomaly-detected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  color: #ef4444;
+  font-weight: 600;
+  flex-direction: column;
+}
+
+.anomaly-score-value {
+  font-size: 0.85rem;
+  color: rgba(239, 68, 68, 0.9);
+}
+
+/* Base Model Predictions */
+.base-predictions-section {
+  margin-bottom: 1.5rem;
+}
+
+.base-predictions-section h4 {
+  color: #a78bfa;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.base-models-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.base-model-card {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.base-model-card:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.model-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #60a5fa;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.model-probability {
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Prediction Box */
 .prediction-box {
   background: rgba(139, 92, 246, 0.1);
   border: 1px solid rgba(139, 92, 246, 0.3);
@@ -427,6 +539,12 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.prediction-text {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  font-size: 1rem;
 }
 
 /* Spin Animation */

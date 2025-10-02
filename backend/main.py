@@ -11,10 +11,12 @@ from datetime import datetime
 from io import StringIO
 from dotenv import load_dotenv
 from configs import SensorReadings, MachineData, ChatMessage
-from retrivals import load_embeddings_from_file, search_query_in_embeddings         
+from retrivals import load_embeddings_from_file, search_query_in_embeddings
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
 from Orchestrator import Orchestrator
 import uploads
+from ml_predictor import get_predictor
+from line_bot import get_line_notifier
 
 # Load environment variables
 
@@ -133,8 +135,9 @@ async def upload_csv(file: UploadFile = File(...), custom_name: Optional[str] = 
         max_date = df['Timestamp'].max().strftime('%Y-%m-%d')
         date_range = f"{min_date} ถึง {max_date}"
 
-        # Save as JSON file to disk - AWS Cloud Path
-        CSV_DIR = "/opt/dlami/nvme/csv_data"
+        # Save as JSON file to disk - Local Path
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        CSV_DIR = os.path.join(backend_dir, "csv_data")
         os.makedirs(CSV_DIR, exist_ok=True)
 
         if custom_name:
@@ -429,15 +432,43 @@ async def predict_breakdown(data: MachineData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/predict-ml-breakdown")
+async def predict_ml_breakdown(data: MachineData):
+    """ทำนายความเสี่ยงด้วย ML Model (pm_model_fullpipeline.py)"""
+    try:
+        sensor_dict = data.sensor_readings.model_dump()
+
+        # Get ML predictor
+        predictor = get_predictor()
+
+        # Make prediction
+        ml_result = predictor.predict_single(sensor_dict)
+
+        # Add metadata
+        ml_result["machine_type"] = data.machine_type
+        ml_result["timestamp"] = data.timestamp
+
+        return ml_result
+
+    except Exception as e:
+        import traceback
+        print(f"Error in /api/predict-ml-breakdown: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/repair-manual")
 async def get_repair_manual(request: ChatMessage):
 
     """ค้นหาคู่มือการซ่อม (ใช้ AI ตอบคำถาม)"""
-    try: 
-        embeddings_file_path  = "/embeddings.json"
+    try:
+        # Get the backend directory path
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        embeddings_file_path = os.path.join(backend_dir, "embeddings.json")
+        manuls_file_path = os.path.join(backend_dir, "manuls.txt")
+
         embeddings = load_embeddings_from_file(embeddings_file_path)
-        
-        with open("manuls.txt", "r", encoding="utf-8") as file:
+
+        with open(manuls_file_path, "r", encoding="utf-8") as file:
             text_fitz = file.read()  # อ่านเนื้อหาทั้งหมดในไฟล์
 
         # แบ่งข้อความตามบรรทัด

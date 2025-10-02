@@ -159,7 +159,8 @@ function SensorAnalysis() {
       delete sensorReadings.timestamp
       delete sensorReadings.machine_id
 
-      const response = await axios.post(`${API_URL}/api/predict-breakdown`, {
+      // Use ML Model endpoint
+      const response = await axios.post(`${API_URL}/api/predict-ml-breakdown`, {
         timestamp: new Date().toISOString(),
         machine_type: selectedRow.machine_id || 'Feed Mill 1',
         sensor_readings: sensorReadings
@@ -397,23 +398,73 @@ function SensorAnalysis() {
 
       {predictionResult && (
         <div className="result-section prediction-result glass-panel">
-          <h3><GiCrystalBall style={{ marginRight: '0.5rem' }} />ผลการทำนาย Zero Breakdown</h3>
+          <h3><GiCrystalBall style={{ marginRight: '0.5rem' }} />ผลการทำนาย ML Model (Zero Breakdown)</h3>
 
-          <div className="risk-score-box">
-            <div className={`risk-badge risk-${predictionResult.risk_level}`}>
-              <div className="risk-score">{predictionResult.risk_score}/100</div>
-              <div className="risk-label">ระดับความเสี่ยง: {predictionResult.risk_level}</div>
+          {/* Risk Score & Model Info */}
+          <div className="ml-prediction-header">
+            <div className="risk-score-box">
+              <div className={`risk-badge risk-${predictionResult.risk_level}`}>
+                <div className="risk-score">{predictionResult.risk_score}/100</div>
+                <div className="risk-label">ระดับความเสี่ยง: {predictionResult.risk_level}</div>
+                {predictionResult.risk_probability && (
+                  <div className="risk-probability">ความน่าจะเป็น: {(predictionResult.risk_probability * 100).toFixed(2)}%</div>
+                )}
+              </div>
+            </div>
+
+            {/* Model Type Badge */}
+            <div className="model-info-badge">
+              <div className="model-type">{predictionResult.model_type || 'ML Stacked Ensemble'}</div>
+              {predictionResult.anomaly_flag === 1 && (
+                <div className="anomaly-detected">
+                  <IoWarning /> Anomaly Detected
+                  {predictionResult.anomaly_score && (
+                    <span className="anomaly-score-value">Score: {predictionResult.anomaly_score.toFixed(3)}</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
+          {/* Base Model Predictions */}
+          {predictionResult.base_predictions && (
+            <div className="base-predictions-section">
+              <h4><MdAnalytics style={{ marginRight: '0.5rem' }} />ผลการทำนายจากโมเดลพื้นฐาน:</h4>
+              <div className="base-models-grid">
+                {predictionResult.base_predictions.xgb !== null && predictionResult.base_predictions.xgb !== undefined && (
+                  <div className="base-model-card">
+                    <div className="model-name">XGBoost</div>
+                    <div className="model-probability">{(predictionResult.base_predictions.xgb * 100).toFixed(2)}%</div>
+                  </div>
+                )}
+                {predictionResult.base_predictions.lgb !== null && predictionResult.base_predictions.lgb !== undefined && (
+                  <div className="base-model-card">
+                    <div className="model-name">LightGBM</div>
+                    <div className="model-probability">{(predictionResult.base_predictions.lgb * 100).toFixed(2)}%</div>
+                  </div>
+                )}
+                {predictionResult.base_predictions.rf !== null && predictionResult.base_predictions.rf !== undefined && (
+                  <div className="base-model-card">
+                    <div className="model-name">Random Forest</div>
+                    <div className="model-probability">{(predictionResult.base_predictions.rf * 100).toFixed(2)}%</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Prediction Text */}
           <div className="prediction-box">
             <h4><MdAnalytics style={{ marginRight: '0.5rem' }} />การทำนาย:</h4>
-            <ReactMarkdown>{predictionResult.prediction}</ReactMarkdown>
+            <div className="prediction-text">
+              {predictionResult.prediction}
+            </div>
           </div>
 
-          {predictionResult.alerts.length > 0 && (
+          {/* Alerts */}
+          {predictionResult.alerts && predictionResult.alerts.length > 0 && (
             <div className="alerts-box">
-              <h4><IoWarning style={{ marginRight: '0.5rem' }} />ปัญหาที่พบ:</h4>
+              <h4><IoWarning style={{ marginRight: '0.5rem' }} />ปัญหาที่พบ ({predictionResult.alerts.length} รายการ):</h4>
               <ul>
                 {predictionResult.alerts.map((alert, idx) => (
                   <li key={idx}>{alert}</li>

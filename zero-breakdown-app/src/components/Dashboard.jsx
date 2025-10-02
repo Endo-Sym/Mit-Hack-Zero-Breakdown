@@ -1,88 +1,167 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import GaugeChart from 'react-gauge-chart'
 import './Dashboard.css'
 import { MdDashboard } from 'react-icons/md'
+import { IoWarning } from 'react-icons/io5'
 
 const API_URL = 'http://localhost:8000'
 
+// Thresholds from BreakdownPredictionTool.py and BreakdownMaintenanceAdviceTool.py
+const THRESHOLDS = {
+  CurrentMotor: { min: 280, max: 320, danger_min: 240, danger_max: 360 },
+  TempBrassBearingDE: { max: 75, warning: 85, danger: 95 }
+}
+
 function Dashboard() {
-  const [selectedMachine, setSelectedMachine] = useState('Feed Mill 1')
+  const [machines, setMachines] = useState([])
+  const [selectedMachine, setSelectedMachine] = useState(null)
   const [currentValues, setCurrentValues] = useState({
-    currentMotor: 305,
-    temperature: 68
+    currentMotor: 0,
+    temperature: 0
   })
-  const [machineData, setMachineData] = useState({
-    'Feed Mill 1': [],
-    'Feed Mill 2': [],
-    'Feed Mill 3': [],
-    'Feed Mill 4': []
-  })
+  const [machineData, setMachineData] = useState([])
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Generate sample time-series data
-  const generateSampleData = () => {
-    const data = {}
-    const machines = ['Feed Mill 1', 'Feed Mill 2', 'Feed Mill 3', 'Feed Mill 4']
-
-    machines.forEach((machine, machineIdx) => {
-      const dataPoints = []
-      const now = new Date()
-
-      for (let i = 100; i >= 0; i--) {
-        const timestamp = i
-
-        dataPoints.push({
-          timestamp: timestamp,
-          current: +(280 + Math.random() * 40).toFixed(1),
-          temperature: +(60 + Math.random() * 20).toFixed(1)
-        })
-      }
-
-      data[machine] = dataPoints
-    })
-
-    setMachineData(data)
-
-    // Update current values
-    setCurrentValues({
-      currentMotor: +(280 + Math.random() * 40).toFixed(1),
-      temperature: +(60 + Math.random() * 20).toFixed(1)
-    })
-  }
-
+  // Load machines list
   useEffect(() => {
-    generateSampleData()
-    const interval = setInterval(generateSampleData, 5000)
-    return () => clearInterval(interval)
+    loadMachines()
   }, [])
 
-  const data = machineData[selectedMachine] || []
+  // Load machine data when selected machine changes
+  useEffect(() => {
+    if (selectedMachine) {
+      loadMachineData(selectedMachine)
+    }
+  }, [selectedMachine])
+
+  const loadMachines = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/machines`)
+      if (response.data.machines && response.data.machines.length > 0) {
+        setMachines(response.data.machines)
+        setSelectedMachine(response.data.machines[0])
+      }
+    } catch (error) {
+      console.error('Error loading machines:', error)
+    }
+  }
+
+  const loadMachineData = async (machineId) => {
+    try {
+      setLoading(true)
+      const response = await axios.get(`${API_URL}/api/machine-data/${machineId}`, {
+        params: { limit: 100 }
+      })
+
+      if (response.data) {
+        const sensorReadings = response.data.sensor_readings
+
+        // Update current values
+        setCurrentValues({
+          currentMotor: sensorReadings.CurrentMotor || 0,
+          temperature: sensorReadings.TempBrassBearingDE || 0
+        })
+
+        // Check for threshold violations and create alerts
+        const newAlerts = []
+
+        // Check CurrentMotor
+        if (sensorReadings.CurrentMotor < THRESHOLDS.CurrentMotor.danger_min ||
+            sensorReadings.CurrentMotor > THRESHOLDS.CurrentMotor.danger_max) {
+          newAlerts.push(`CurrentMotor อยู่ในระดับอันตราย: ${sensorReadings.CurrentMotor} A`)
+        } else if (sensorReadings.CurrentMotor < THRESHOLDS.CurrentMotor.min ||
+                   sensorReadings.CurrentMotor > THRESHOLDS.CurrentMotor.max) {
+          newAlerts.push(`CurrentMotor ผิดปกติ: ${sensorReadings.CurrentMotor} A`)
+        }
+
+        // Check Temperature
+        if (sensorReadings.TempBrassBearingDE > THRESHOLDS.TempBrassBearingDE.danger) {
+          newAlerts.push(`อุณหภูมิสูงเกินไปมาก: ${sensorReadings.TempBrassBearingDE}°C`)
+        } else if (sensorReadings.TempBrassBearingDE > THRESHOLDS.TempBrassBearingDE.warning) {
+          newAlerts.push(`อุณหภูมิสูงกว่าปกติ: ${sensorReadings.TempBrassBearingDE}°C`)
+        } else if (sensorReadings.TempBrassBearingDE > THRESHOLDS.TempBrassBearingDE.max) {
+          newAlerts.push(`อุณหภูมิเกินค่าปกติ: ${sensorReadings.TempBrassBearingDE}°C`)
+        }
+
+        setAlerts(newAlerts)
+
+        // Generate time series data (simulate history with current values)
+        const dataPoints = []
+        for (let i = 100; i >= 0; i--) {
+          dataPoints.push({
+            timestamp: i,
+            current: sensorReadings.CurrentMotor + (Math.random() - 0.5) * 10,
+            temperature: sensorReadings.TempBrassBearingDE + (Math.random() - 0.5) * 5
+          })
+        }
+
+        setMachineData(dataPoints)
+      }
+    } catch (error) {
+      console.error('Error loading machine data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    if (selectedMachine) {
+      const interval = setInterval(() => {
+        loadMachineData(selectedMachine)
+      }, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [selectedMachine])
 
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>
           <MdDashboard style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />
-          Dashboard - Factory One Vibration
+          Dashboard - Factory Real-time Monitoring
         </h2>
         <p className="description">
-          แดชบอร์ดแสดงข้อมูลการสั่นสะเทือนและสถานะเครื่องจักรแบบเรียลไทม์
+          แดชบอร์ดแสดงข้อมูลเครื่องจักรแบบเรียลไทม์จากไฟล์ที่อัพโหลด
         </p>
       </div>
 
+      {/* Alerts Section */}
+      {alerts.length > 0 && (
+        <div className="alerts-banner">
+          <IoWarning style={{ marginRight: '0.5rem', fontSize: '1.5rem' }} />
+          <div className="alerts-content">
+            <strong>แจ้งเตือน: เครื่องมีสถานะเกินเกณฑ์</strong>
+            <ul>
+              {alerts.map((alert, idx) => (
+                <li key={idx}>{alert}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Machine Selector */}
-      <div className="machine-selector">
-        {Object.keys(machineData).map((machineName) => (
-          <button
-            key={machineName}
-            className={`machine-btn ${selectedMachine === machineName ? 'active' : ''}`}
-            onClick={() => setSelectedMachine(machineName)}
-          >
-            {machineName}
-          </button>
-        ))}
-      </div>
+      {machines.length > 0 ? (
+        <div className="machine-selector">
+          {machines.map((machineName) => (
+            <button
+              key={machineName}
+              className={`machine-btn ${selectedMachine === machineName ? 'active' : ''}`}
+              onClick={() => setSelectedMachine(machineName)}
+            >
+              {machineName}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="no-data-message">
+          <p>ยังไม่มีข้อมูล กรุณาอัพโหลดไฟล์ CSV ที่หน้า "วิเคราะห์ข้อมูล Sensor"</p>
+        </div>
+      )}
 
       {/* Main Dashboard Layout */}
       <div className="dashboard-main">
@@ -132,7 +211,7 @@ function Dashboard() {
               <div className="status-indicator">แจ้งเตือนเกินขีดจำกัด</div>
             </div>
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <LineChart data={machineData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(167, 139, 250, 0.2)" />
                 <XAxis
                   dataKey="timestamp"
@@ -155,6 +234,35 @@ function Dashboard() {
                     color: '#F3F4F6'
                   }}
                 />
+                {/* Threshold lines for CurrentMotor */}
+                <ReferenceLine
+                  y={THRESHOLDS.CurrentMotor.max}
+                  stroke="#FBBF24"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  label={{ value: `Max: ${THRESHOLDS.CurrentMotor.max}A`, fill: '#FBBF24', fontSize: 11, position: 'right' }}
+                />
+                <ReferenceLine
+                  y={THRESHOLDS.CurrentMotor.min}
+                  stroke="#FBBF24"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  label={{ value: `Min: ${THRESHOLDS.CurrentMotor.min}A`, fill: '#FBBF24', fontSize: 11, position: 'right' }}
+                />
+                <ReferenceLine
+                  y={THRESHOLDS.CurrentMotor.danger_max}
+                  stroke="#EF4444"
+                  strokeWidth={2}
+                  strokeDasharray="3 3"
+                  label={{ value: `Danger: ${THRESHOLDS.CurrentMotor.danger_max}A`, fill: '#EF4444', fontSize: 11, position: 'right' }}
+                />
+                <ReferenceLine
+                  y={THRESHOLDS.CurrentMotor.danger_min}
+                  stroke="#EF4444"
+                  strokeWidth={2}
+                  strokeDasharray="3 3"
+                  label={{ value: `Danger: ${THRESHOLDS.CurrentMotor.danger_min}A`, fill: '#EF4444', fontSize: 11, position: 'right' }}
+                />
                 <Line
                   type="monotone"
                   dataKey="current"
@@ -173,7 +281,7 @@ function Dashboard() {
               <div className="status-indicator">แจ้งเตือนเกินขีดจำกัด</div>
             </div>
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <LineChart data={machineData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(167, 139, 250, 0.2)" />
                 <XAxis
                   dataKey="timestamp"
@@ -195,6 +303,28 @@ function Dashboard() {
                     borderRadius: '8px',
                     color: '#F3F4F6'
                   }}
+                />
+                {/* Threshold lines for Temperature */}
+                <ReferenceLine
+                  y={THRESHOLDS.TempBrassBearingDE.max}
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  label={{ value: `Normal Max: ${THRESHOLDS.TempBrassBearingDE.max}°C`, fill: '#10b981', fontSize: 11, position: 'right' }}
+                />
+                <ReferenceLine
+                  y={THRESHOLDS.TempBrassBearingDE.warning}
+                  stroke="#FBBF24"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  label={{ value: `Warning: ${THRESHOLDS.TempBrassBearingDE.warning}°C`, fill: '#FBBF24', fontSize: 11, position: 'right' }}
+                />
+                <ReferenceLine
+                  y={THRESHOLDS.TempBrassBearingDE.danger}
+                  stroke="#EF4444"
+                  strokeWidth={2}
+                  strokeDasharray="3 3"
+                  label={{ value: `Danger: ${THRESHOLDS.TempBrassBearingDE.danger}°C`, fill: '#EF4444', fontSize: 11, position: 'right' }}
                 />
                 <Line
                   type="monotone"
