@@ -165,4 +165,4 @@ class Orchestrator:
     @staticmethod
     def _get_user_input(user_input):
         # This should be replaced with actual input handling (e.g., from a UI or a form)
-        return user_input  
+        return "Sample user input"  # Placeholder for testing

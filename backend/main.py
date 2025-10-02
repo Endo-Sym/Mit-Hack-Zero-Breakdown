@@ -466,7 +466,7 @@ async def chat_agent(request: ChatMessage):
 
         return {
             "message": request.message,
-            
+            "detected_function": function_type,
             "response": agent_response
         }
     except Exception as e:
