@@ -2,6 +2,10 @@
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 
+# Model
+class SupportedModels(Enum):
+    CLAUDE_HAIKU = "arn:aws:bedrock:us-west-2:150965600522:inference-profile/us.anthropic.claude-3-haiku-20240307-v1:0"
+
 # Pydantic models
 class SensorReadings(BaseModel):
     PowerMotor: float

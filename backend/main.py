@@ -259,23 +259,39 @@ async def get_repair_manual(request: ChatMessage):
 2. อุปกรณ์ที่ต้องใช้
 3. ข้อควรระวัง
 4. เวลาที่ใช้โดยประมาณ"""
+        body = json.dumps({
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 1024
+        })
 
-        response = bedrock_runtime.invoke_model(
-            modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2048,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            })
+        # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
+        response_body = client.converse(
+            modelId="qwen.qwen3-32b-v1:0",
+            body=body
         )
+        manual_content= response_body['output']['message']['content'][0]['text']
 
-        response_body = json.loads(response['body'].read())
-        manual_content = response_body['content'][0]['text']
+        # response = bedrock_runtime.invoke_model(
+        #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
+        #     body=json.dumps({
+        #         "anthropic_version": "bedrock-2023-05-31",
+        #         "max_tokens": 2048,
+        #         "messages": [
+        #             {
+        #                 "role": "user",
+        #                 "content": prompt
+        #             }
+        #         ]
+        #     })
+        # )
+
+        # response_body = json.loads(response['body'].read())
+        # manual_content = response_body['content'][0]['text']
 
         return {
             "question": request.message,
