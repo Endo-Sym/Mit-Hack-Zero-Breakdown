@@ -1,12 +1,19 @@
-from retrivals import load_embeddings_from_file, search_query_in_embeddings         
+from retrivals import load_embeddings_from_file, search_query_in_embeddings
 from fastapi import FastAPI, HTTPException, UploadFile, File
 import boto3
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # AWS Bedrock client
 bedrock_runtime = boto3.client(
     service_name='bedrock-runtime',
-    region_name='us-west-2'
+    region_name='us-west-2',
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
 )
+
 class MaintenanceManuleTool:
 
     @staticmethod
@@ -24,22 +31,22 @@ class MaintenanceManuleTool:
                                 "description": "User's question regarding maintenance or breakdown advice."
                             }
                         },
-                        "required": ["query_text"]  # Ensure the user provides a question
+                        "required": ["query_text"]
                     }
                 }
             }
         }
-    
+
     @staticmethod
     def maintenance_manules(input_data):
-        try: 
+        try:
             # Load embeddings from file
-            embeddings_file_path  = "/embeddings.json"
+            embeddings_file_path = "embeddings.json"
             embeddings = load_embeddings_from_file(embeddings_file_path)
-            
+
             # Open and read the manual file
             with open("manuls.txt", "r", encoding="utf-8") as file:
-                text_fitz = file.read()  # อ่านเนื้อหาทั้งหมดในไฟล์
+                text_fitz = file.read()
 
             # Split the text by new lines (or paragraphs)
             texts_strip = text_fitz.split("\n")
@@ -48,7 +55,7 @@ class MaintenanceManuleTool:
             texts = [text for text in texts_strip if text.strip()]
 
             # Get query text from input data (message from the user)
-            query_text = input_data.get('query_text', "")  # Assuming input_data contains 'query_text'
+            query_text = input_data.get('query_text', "")
 
             if not query_text:
                 raise HTTPException(status_code=400, detail="query_text is required")
@@ -92,4 +99,3 @@ class MaintenanceManuleTool:
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-

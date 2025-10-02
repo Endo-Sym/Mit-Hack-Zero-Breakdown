@@ -82,61 +82,61 @@ class BreakdownPredictionTool:
                         "type": "object",
                         "properties": {
                             "Power_Motor": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Power consumed by the motor (kW)."
                             },
                             "Current_Motor": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Current draw by the motor (A)."
                             },
                             "Temperator_Brass_bearing_DE": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the brass bearing (°C)."
                             },
                             "Temperator_Brass_bearing_NDE": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the brass bearing (°C)."
                             },
                             "Temperator_Bearing_Motor_DE": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the motor bearing (°C)."
                             },
                             "Temperator_Bearing_Motor_NDE": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the motor bearing (°C)."
                             },
                             "Speed_Motor": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Speed of the motor (rpm)."
                             },
                             "Speed_Roller": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Speed of the roller (rpm)."
                             },
                             "Temperator_Oil_Gear": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the oil gear (°C)."
                             },
                             "Temperator_Winding_Motor_Phase_U": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the winding motor (Phase U)."
                             },
                             "Temperator_Winding_Motor_Phase_V": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the winding motor (Phase V)."
                             },
                             "Temperator_Winding_Motor_Phase_W": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Temperature of the winding motor (Phase W)."
                             },
                             "Vibration": {
-                                "type": "float",
+                                "type": "number",
                                 "description": "Vibration level of the machine (mm/s)."
                             }
                         },
                         "required": [
-                            "Power_Motor", 
-                            "Current_Motor", 
+                            "Power_Motor",
+                            "Current_Motor",
                             "Temperator_Brass_bearing_DE",
                             "Temperator_Brass_bearing_NDE",
                             "Temperator_Bearing_Motor_DE",
@@ -154,6 +154,5 @@ class BreakdownPredictionTool:
             }
 
                 }
-        
-            
-        
+
+

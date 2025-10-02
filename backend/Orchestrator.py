@@ -1,10 +1,13 @@
 import boto3
+import os
+from dotenv import load_dotenv
 from typing import Dict
 from configs import SupportedModels
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
 from BreakdownPredictionTool import BreakdownPredictionTool
 from MaintenanceManuleTool import MaintenanceManuleTool
 
+load_dotenv()
 AWS_REGION = "us-west-2"
 MODEL_ID = SupportedModels.CLAUDE_HAIKU.value
 
@@ -27,7 +30,12 @@ class Orchestrator:
                 MaintenanceManuleTool.get_tool_spec()
             ]
         }
-        self.bedrockRuntimeClient = boto3.client("bedrock-runtime", region_name=AWS_REGION)
+        self.bedrockRuntimeClient = boto3.client(
+            "bedrock-runtime",
+            region_name=AWS_REGION,
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+        )
 
     def run(self):
         conversation = []
@@ -81,9 +89,9 @@ class Orchestrator:
         if tool_name == "Breakdown_Prediction_Tool":
             input_data = payload["input"]
             response = BreakdownPredictionTool.analyze_sensors(input_data)
-        elif tool_name == "MaintenanceManuleTool":
+        elif tool_name == "Maintenance_Manule_Tool":
             input_data = payload.get("input", {})
-            response = BreakdownMaintenanceAdviceTool.analyze_sensors(input_data)
+            response = MaintenanceManuleTool.maintenance_manules(input_data)
         else:
             response = {"error": True, "message": f"Tool {tool_name} not found"}
         return {"toolUseId": payload["toolUseId"], "content": response}
@@ -158,7 +166,7 @@ class Orchestrator:
             response = BreakdownPredictionTool.analyze_sensors(input_data)
         elif tool_name == "Maintenance_Manule_Tool":
             input_data = payload.get("input", {})
-            response = MaintenanceManuleTool.maintenance_nanules(input_data)
+            response = MaintenanceManuleTool.maintenance_manules(input_data)
         else:
             response = {"error": True, "message": f"Tool {tool_name} not found"}
         return {"toolUseId": payload["toolUseId"], "content": response}
@@ -166,4 +174,4 @@ class Orchestrator:
     @staticmethod
     def _get_user_input(user_input):
         # This should be replaced with actual input handling (e.g., from a UI or a form)
-        return "Sample user input"  # Placeholder for testing
+        return user_input if user_input else "Sample user input"
