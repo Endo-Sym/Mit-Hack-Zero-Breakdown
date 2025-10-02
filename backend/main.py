@@ -7,8 +7,8 @@ import json
 import os
 from datetime import datetime
 from configs import SensorReadings, MachineData, ChatMessage, ROIRequest
-
-app = FastAPI(title="Zero Breakdown Prediction API")
+from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
+app = FastAPI(title="MITR Phol_Zero Breakdown Prediction API")
 
 # CORS middleware
 app.add_middleware(
@@ -26,123 +26,6 @@ bedrock_runtime = boto3.client(
 )
 
 # Sensor threshold analysis
-class BreakdownMaintenanceAdviceTool:
-    def analyze_sensors(self, sensor_data: Dict) -> Dict:
-        alerts = []
-
-        # PowerMotor thresholds (kW)
-        power = sensor_data.get('PowerMotor', 0)
-        if 280 <= power <= 320:
-            status_power = "ปกติ"
-        elif (270 <= power < 280) or (320 < power <= 325):
-            status_power = "เสี่ยง"
-            alerts.append(f"PowerMotor: มีสถานะเป็นเสี่ยง มีค่า {power} kW")
-        elif power < 260 or power > 360:
-            status_power = "เสียหาย"
-            alerts.append(f"PowerMotor: มีสถานะเป็นเสียหาย มีค่า {power} kW - ค่าผิดปกติมาก")
-        else:
-            status_power = "เสี่ยง"
-            alerts.append(f"PowerMotor: มีค่า {power} kW อยู่ในระดับเสี่ยง")
-
-        # CurrentMotor thresholds (Amp)
-        current = sensor_data.get('CurrentMotor', 0)
-        if 270 <= current <= 330:
-            status_current = "ปกติ"
-        elif (260 <= current < 270) or (330 < current <= 340):
-            status_current = "เสี่ยง"
-            alerts.append(f"CurrentMotor: มีสถานะเป็นเสี่ยง มีค่า {current} Amp")
-        elif current < 240 or current > 360:
-            status_current = "เสียหาย"
-            alerts.append(f"CurrentMotor: มีสถานะเป็นเสียหาย มีค่า {current} Amp")
-        else:
-            status_current = "เสี่ยง"
-            alerts.append(f"CurrentMotor: มีค่า {current} Amp อยู่ในระดับเสี่ยง")
-
-        # Temperature sensors (°C)
-        temp_brass = sensor_data.get('TempBrassBearingDE', 0)
-        if temp_brass < 75:
-            status_brass = "ปกติ"
-        elif 75 <= temp_brass <= 85:
-            status_brass = "เสี่ยง"
-            alerts.append(f"TempBrassBearingDE: อุณหภูมิสูง {temp_brass}°C")
-        else:
-            status_brass = "เสียหาย"
-            alerts.append(f"TempBrassBearingDE: อุณหภูมิสูงเกินไป {temp_brass}°C")
-
-        temp_motor_nde = sensor_data.get('TempBearingMotorNDE', 0)
-        if temp_motor_nde < 75:
-            status_motor_nde = "ปกติ"
-        elif 75 <= temp_motor_nde <= 85:
-            status_motor_nde = "เสี่ยง"
-            alerts.append(f"TempBearingMotorNDE: อุณหภูมิสูง {temp_motor_nde}°C")
-        else:
-            status_motor_nde = "เสียหาย"
-            alerts.append(f"TempBearingMotorNDE: อุณหภูมิสูงเกินไป {temp_motor_nde}°C")
-
-        # Speed Motor (rpm)
-        speed_motor = sensor_data.get('SpeedMotor', 0)
-        if 1470 <= speed_motor <= 1500:
-            status_speed = "ปกติ"
-        elif (1450 <= speed_motor < 1470) or (1500 < speed_motor <= 1510):
-            status_speed = "เสี่ยง"
-            alerts.append(f"SpeedMotor: ความเร็วผิดปกติเล็กน้อย {speed_motor} rpm")
-        elif speed_motor == 0:
-            status_speed = "เสียหาย"
-            alerts.append(f"SpeedMotor: มอเตอร์หยุดทำงาน")
-        else:
-            status_speed = "เสี่ยง"
-            alerts.append(f"SpeedMotor: ความเร็ว {speed_motor} rpm อยู่นอกช่วงปกติ")
-
-        # TempOilGear (°C)
-        temp_oil = sensor_data.get('TempOilGear', 0)
-        if temp_oil < 65:
-            status_oil = "ปกติ"
-        elif 65 <= temp_oil <= 75:
-            status_oil = "เสี่ยง"
-            alerts.append(f"TempOilGear: อุณหภูมิน้ำมันเกียร์สูง {temp_oil}°C")
-        else:
-            status_oil = "เสียหาย"
-            alerts.append(f"TempOilGear: อุณหภูมิน้ำมันเกียร์สูงเกินไป {temp_oil}°C")
-
-        # Winding temperatures (°C)
-        temp_u = sensor_data.get('TempWindingMotorPhase_U', 0)
-        temp_v = sensor_data.get('TempWindingMotorPhase_V', 0)
-        temp_w = sensor_data.get('TempWindingMotorPhase_W', 0)
-
-        for phase, temp in [('U', temp_u), ('V', temp_v), ('W', temp_w)]:
-            if temp < 115:
-                continue
-            elif 115 <= temp <= 125:
-                alerts.append(f"TempWindingMotorPhase_{phase}: อุณหภูมิสูง {temp}°C")
-            else:
-                alerts.append(f"TempWindingMotorPhase_{phase}: อุณหภูมิสูงเกินไป {temp}°C")
-
-        # Vibration (mm/s)
-        vibration = sensor_data.get('Vibration')
-        if vibration:
-            if vibration < 0.71:
-                vib_status = "ดีมาก"
-            elif 0.71 <= vibration < 1.8:
-                vib_status = "ดี"
-            elif 1.8 <= vibration < 4.5:
-                vib_status = "พอใช้"
-                alerts.append(f"Vibration: การสั่นสะเทือน {vibration} mm/s อยู่ในระดับพอใช้")
-            else:
-                vib_status = "ไม่พอใช้"
-                alerts.append(f"Vibration: การสั่นสะเทือนสูงเกินไป {vibration} mm/s")
-
-        return {
-            "alerts": alerts,
-            "status_summary": {
-                "power": status_power,
-                "current": status_current,
-                "temp_brass": status_brass,
-                "temp_motor_nde": status_motor_nde,
-                "speed": status_speed,
-                "oil_temp": status_oil
-            }
-        }
-
 maintenance_tool = BreakdownMaintenanceAdviceTool()
 
 # API Endpoints
@@ -154,7 +37,7 @@ def read_root():
 async def analyze_sensors(data: MachineData):
     """วิเคราะห์ข้อมูล sensor และให้คำแนะนำ"""
     try:
-        sensor_dict = data.sensor_readings.dict()
+        sensor_dict = data.sensor_readings.model_dump()
         analysis = maintenance_tool.analyze_sensors(sensor_dict)
 
 #------------ prompt นี้ รอ ทำ RAG--------------------------------
@@ -238,7 +121,7 @@ async def analyze_sensors(data: MachineData):
 async def predict_breakdown(data: MachineData):
     """ทำนายความเสี่ยงของการพังของเครื่องจักร"""
     try:
-        sensor_dict = data.sensor_readings.dict()
+        sensor_dict = data.sensor_readings.model_dump()
         analysis = maintenance_tool.analyze_sensors(sensor_dict)
 
         # Calculate risk score
@@ -362,6 +245,9 @@ async def calculate_roi(request: ROIRequest):
 
 @app.post("/api/repair-manual")
 async def get_repair_manual(request: ChatMessage):
+
+#------------ prompt นี้ รอ ทำ RAG--------------------------------
+
     """ค้นหาคู่มือการซ่อม (ใช้ AI ตอบคำถาม)"""
     try:
         prompt = f"""คุณเป็นผู้เชี่ยวชาญด้านการซ่อมบำรุงเครื่องจักรโรงงานน้ำตาล โดยเฉพาะระบบ Feed Mill
@@ -424,23 +310,41 @@ async def chat_agent(request: ChatMessage):
 1. ฟังก์ชันทำนาย Zero Breakdown - สำหรับวิเคราะห์ sensor และทำนายการเสียหาย
 2. ฟังก์ชันคำนวณ ROI - สำหรับคำนวณผลตอบแทนของการซ่อมในช่วงเวลาต่างๆ
 3. ฟังก์ชันคู่มือการซ่อม - สำหรับค้นหาวิธีการซ่อมและข้อมูลทางเทคนิค"""
+        
 
-        response = bedrock_runtime.invoke_model(
-            modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            })
+
+        body = json.dumps({
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "max_tokens": 1024
+        })
+
+        # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
+        response_body = client.converse(
+            modelId="qwen.qwen3-32b-v1:0",
+            body=body
         )
+        agent_response= response_body['output']['message']['content'][0]['text']
+        # response = bedrock_runtime.invoke_model(
+        #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
+        #     body=json.dumps({
+        #         "anthropic_version": "bedrock-2023-05-31",
+        #         "max_tokens": 1024,
+        #         "messages": [
+        #             {
+        #                 "role": "user",
+        #                 "content": prompt
+        #             }
+        #         ]
+        #     })
+        # )
 
-        response_body = json.loads(response['body'].read())
-        agent_response = response_body['content'][0]['text']
+        # response_body = json.loads(response['body'].read())
+        # agent_response = response_body['content'][0]['text']
 
         return {
             "message": request.message,
