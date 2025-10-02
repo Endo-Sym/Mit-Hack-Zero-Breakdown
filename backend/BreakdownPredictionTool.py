@@ -2,7 +2,7 @@ class BreakdownPredictionTool:
     @staticmethod
     def get_tool_spec():
         return {
-                    "toolSpec": {
+               "toolSpec": {
                 "name": "Breakdown_Prediction_Tool",
                 "description": "Predicts the likelihood of machinery breakdown based on sensor data.",
                 "inputSchema": {
