@@ -11,9 +11,10 @@ class SensorReadings(BaseModel):
     SpeedRoller: float
     TempOilGear: float
     TempBearingMotorNDE: float
-    TempWindingMotorPhase_U: float
-    TempWindingMotorPhase_V: float
-    TempWindingMotorPhase_W: float
+    TempWindingMotor: Optional[float] = None
+    TempWindingMotorPhase_U: Optional[float] = None
+    TempWindingMotorPhase_V: Optional[float] = None
+    TempWindingMotorPhase_W: Optional[float] = None
     Vibration: Optional[float] = None
 
 
