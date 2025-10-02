@@ -2,19 +2,22 @@
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 
+# Model
+class SupportedModels(Enum):
+    CLAUDE_HAIKU = "arn:aws:bedrock:us-west-2:150965600522:inference-profile/us.anthropic.claude-3-haiku-20240307-v1:0"
+
 # Pydantic models
 class SensorReadings(BaseModel):
-    PowerMotor: float
-    CurrentMotor: float
-    TempBrassBearingDE: float
-    SpeedMotor: float
-    SpeedRoller: float
-    TempOilGear: float
-    TempBearingMotorNDE: float
-    TempWindingMotor: Optional[float] = None
-    TempWindingMotorPhase_U: Optional[float] = None
-    TempWindingMotorPhase_V: Optional[float] = None
-    TempWindingMotorPhase_W: Optional[float] = None
+    Power_Motor: float
+    Current_Motor: float
+    Speed_Motor: float
+    Speed_Roller: float
+    Temperator_Brass_bearing_DE: float
+    Temperator_Brass_bearing_NDE: float
+    Temperator_Oil_Gear: float
+    Temperator_Winding_Motor_Phase_U: float
+    Temperator_Winding_Motor_Phase_V: float
+    Temperator_Winding_Motor_Phase_W: float
     Vibration: Optional[float] = None
 
 
