@@ -397,70 +397,8 @@ async def get_repair_manual(request: ChatMessage):
 
 @app.post("/api/chat")
 async def chat_agent(request: ChatMessage):
-    """Agentic AI Chat - จัดการคำถามและเลือกฟังก์ชันที่เหมาะสม"""
-    try:
-        print(f"Received chat request: {request.message}")
-        # Determine which function to use based on message
-        message_lower = request.message.lower()
-
-        if any(word in message_lower for word in ['ทำนาย', 'พยากรณ์', 'predict', 'breakdown', 'เสียหาย']):
-            function_type = "prediction"
-        elif any(word in message_lower for word in ['ซ่อม', 'repair', 'manual', 'คู่มือ', 'วิธี']):
-            function_type = "repair_manual"
-        else:
-            function_type = "general"
-
-        prompt = f"""คุณเป็น AI Agent ที่ช่วยจัดการระบบ Zero Breakdown Prediction
-
-คำถาม/คำสั่งจากผู้ใช้: {request.message}
-
-ประเภทคำถาม: {function_type}
-
-กรุณาตอบคำถามหรือแนะนำผู้ใช้ว่าต้องใช้ฟังก์ชันใดในการทำงาน:
-1. ฟังก์ชันทำนาย Zero Breakdown - สำหรับวิเคราะห์ sensor และทำนายการเสียหาย
-2. ฟังก์ชันคู่มือการซ่อม - สำหรับค้นหาวิธีการซ่อมและข้อมูลทางเทคนิค"""
-
-        # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
-        response_body = bedrock_runtime.converse(
-            modelId="qwen.qwen3-32b-v1:0",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [{"text": prompt}]
-                }
-            ],
-            inferenceConfig={
-                "maxTokens": 1024
-            }
-        )
-        agent_response = response_body['output']['message']['content'][0]['text']
-        # response = bedrock_runtime.invoke_model(
-        #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-        #     body=json.dumps({
-        #         "anthropic_version": "bedrock-2023-05-31",
-        #         "max_tokens": 1024,
-        #         "messages": [
-        #             {
-        #                 "role": "user",
-        #                 "content": prompt
-        #             }
-        #         ]
-        #     })
-        # )
-
-        # response_body = json.loads(response['body'].read())
-        # agent_response = response_body['content'][0]['text']
-
-        return {
-            "message": request.message,
-            "detected_function": function_type,
-            "response": agent_response
-        }
-    except Exception as e:
-        import traceback
-        print(f"Error in /api/chat: {str(e)}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+     Orchestrator=Orchestrato()
+     Orchestrator.run(request.message)
 
 if __name__ == "__main__":
     import uvicorn
