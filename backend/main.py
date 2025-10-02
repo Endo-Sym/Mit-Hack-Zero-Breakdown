@@ -1,7 +1,10 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Optional
+import hashlib
+import hmac
+import base64
 import boto3
 import json
 import os
@@ -48,6 +51,13 @@ uploaded_data_store = {
     "dataframe": None,
     "machines": [],
     "metadata": {}
+}
+
+# LINE Bot users storage (replace with database in production)
+line_users_store = {
+    "users": [],  # List of LINE user IDs
+    "alert_settings": {},  # User-specific alert settings
+    "sent_alerts": {}  # Track sent alerts: {machine_id: {timestamp: alert_hash}}
 }
 
 def clean_sensor_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -246,6 +256,101 @@ async def get_machine_data(machine_id: str, limit: int = 100):
         # Analyze current status
         analysis = maintenance_tool.analyze_sensors(sensor_data)
 
+        # Auto-send LINE alert if there are warnings (ONCE per problem)
+        if analysis['alerts']:
+            # Calculate risk score
+            risk_score = len(analysis['alerts']) * 15
+            risk_level = "ต่ำ" if risk_score < 30 else "ปานกลาง" if risk_score < 60 else "สูง"
+
+            # Create unique alert hash from alerts
+            alert_hash = hashlib.md5(
+                "|".join(sorted(analysis['alerts'])).encode('utf-8')
+            ).hexdigest()
+
+            # Check if we already sent this exact alert
+            last_sent = line_users_store["sent_alerts"].get(machine_id, {})
+            if last_sent.get("alert_hash") == alert_hash:
+                print(f"⏭️  Skip duplicate alert for {machine_id} (already sent)")
+            else:
+                # Send LINE alert with repair instructions
+                try:
+                    line_notifier = get_line_notifier()
+                    if line_notifier.is_configured() and line_users_store["users"]:
+                        # Get detailed repair manual from RAG
+                        repair_advice = "กรุณาตรวจสอบเครื่องจักร"
+                        try:
+                            backend_dir = os.path.dirname(os.path.abspath(__file__))
+                            embeddings_file_path = os.path.join(backend_dir, "embeddings.json")
+                            manuls_file_path = os.path.join(backend_dir, "manuls.txt")
+
+                            embeddings = load_embeddings_from_file(embeddings_file_path)
+
+                            with open(manuls_file_path, "r", encoding="utf-8") as file:
+                                text_fitz = file.read()  # อ่านเนื้อหาทั้งหมดในไฟล์
+
+                            # แบ่งข้อความตามบรรทัด
+                            texts_strip = text_fitz.split("\n")  # หรือแบ่งตามพารากราฟได้
+
+                            # กรองข้อความว่างออก
+                            texts = [text for text in texts_strip if text.strip()]
+
+                            # ตรวจสอบว่ามีการรับ query_text จาก request หรือไม่
+                            query_text = "ปัญหาที่พบ: " + ", ".join(analysis['alerts'])
+
+                            # ค้นหาคำถามใน embeddings
+                            results = search_query_in_embeddings(query_text, embeddings, texts)
+
+                            prompt = f"""คุณเป็นผู้เชี่ยวชาญด้านการซ่อมบำรุงเครื่องจักรโรงงานน้ำตาล โดยเฉพาะระบบ Feed Mill
+
+คำถาม: {query_text}
+โดยใช้เนื้อหาจาก: {results}
+
+กรุณาตอบคำถามเกี่ยวกับการซ่อมบำรุงอย่างละเอียด รวมถึง:
+ขั้นตอนการซ่อม
+อุปกรณ์ที่ต้องใช้
+ข้อควรระวัง
+เวลาที่ใช้โดยประมาณ"""
+
+                            # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
+                            response_body = bedrock_runtime.converse(
+                                modelId="qwen.qwen3-32b-v1:0",
+                                messages=[
+                                    {
+                                        "role": "user",
+                                        "content": [{"text": prompt}]
+                                    }
+                                ],
+                                inferenceConfig={
+                                    "maxTokens": 1024
+                                }
+                            )
+                            repair_advice = response_body['output']['message']['content'][0]['text']
+                        except Exception as e:
+                            print(f"⚠️ RAG failed: {str(e)}")
+
+                        messages = line_notifier.create_flex_alert_message(
+                            machine_id=machine_id,
+                            alerts=analysis['alerts'],
+                            risk_score=risk_score,
+                            risk_level=risk_level,
+                            sensor_readings=sensor_data,
+                            repair_advice=repair_advice
+                        )
+
+                        # Send to all users with alerts enabled
+                        for user_id in line_users_store["users"]:
+                            if line_users_store["alert_settings"].get(user_id, True):
+                                line_notifier.send_push_message(user_id, messages)
+                                print(f"📤 Auto-alert sent to LINE user: {user_id} for {machine_id}")
+
+                        # Mark as sent
+                        line_users_store["sent_alerts"][machine_id] = {
+                            "alert_hash": alert_hash,
+                            "timestamp": latest['Timestamp'].isoformat()
+                        }
+                except Exception as e:
+                    print(f"⚠️ Failed to send auto LINE alert: {str(e)}")
+
         return {
             "machine_id": machine_id,
             "timestamp": latest['Timestamp'].isoformat(),
@@ -268,82 +373,75 @@ async def analyze_sensors(data: MachineData):
         sensor_dict_for_tool = convert_sensor_names_to_tool_format(sensor_dict)
         analysis = maintenance_tool.analyze_sensors(sensor_dict_for_tool)
 
-#------------ prompt นี้ รอ ทำ RAG--------------------------------
-        # Generate maintenance advice using AWS Bedrock
+        # Generate maintenance advice using AWS Bedrock with RAG
         if analysis['alerts']:
-            prompt = f"""วิเคราะห์ข้อมูล sensor ของเครื่องจักร {data.machine_type}:
+            try:
+                # Get the backend directory path
+                backend_dir = os.path.dirname(os.path.abspath(__file__))
+                embeddings_file_path = os.path.join(backend_dir, "embeddings.json")
+                manuls_file_path = os.path.join(backend_dir, "manuls.txt")
+
+                embeddings = load_embeddings_from_file(embeddings_file_path)
+
+                with open(manuls_file_path, "r", encoding="utf-8") as file:
+                    text_fitz = file.read()  # อ่านเนื้อหาทั้งหมดในไฟล์
+
+                # แบ่งข้อความตามบรรทัด
+                texts_strip = text_fitz.split("\n")  # หรือแบ่งตามพารากราฟได้
+
+                # กรองข้อความว่างออก
+                texts = [text for text in texts_strip if text.strip()]
+
+                # ตรวจสอบว่ามีการรับ query_text จาก request หรือไม่
+                query_text = f"ปัญหาเครื่องจักร {data.machine_type}: " + ", ".join(analysis['alerts'])
+
+                # ค้นหาคำถามใน embeddings
+                results = search_query_in_embeddings(query_text, embeddings, texts)
+
+                prompt = f"""คุณเป็นผู้เชี่ยวชาญด้านการซ่อมบำรุงเครื่องจักรโรงงานน้ำตาล โดยเฉพาะระบบ Feed Mill
+
+คำถาม: {query_text}
+โดยใช้เนื้อหาจาก: {results}
 
 ข้อมูล Sensor:
 {json.dumps(sensor_dict, indent=2, ensure_ascii=False)}
 
-แจ้งเตือน:
+ปัญหาที่พบ:
 {chr(10).join(analysis['alerts'])}
 
-กรุณาให้คำแนะนำการซ่อมบำรุงที่ชัดเจนและเป็นขั้นตอนจาก
-คู่มือซ่อมบำรุงที่ถูกต้องสำหรับ ABB M3BP355SMB4:
-        1. การหล่อลื่นแบริ่ง
-        ใช้จาระบีชนิด Lithium-based เช่น Mobil Polyrex EM
-        รอบการหล่อลื่น: ทุก 3,000–5,000 ชั่วโมง หรือเร็วกว่านั้นในสภาพแวดล้อมร้อน/ชื้น
-        มีช่องเติมจาระบีที่ฝั่ง DE และ NDE
+ข้อมูลเปรียบเทียบค่าปกติของแต่ละ sensor:
+- ค่าปกติของ PowerMotor อยู่ในช่วง 290-315 kW
+- ค่าปกติของ CurrentMotor อยู่ในช่วง 280–320 Amp
+- ค่าปกติของ TempBrassBearingDE อยู่ในช่วง < 75°C
+- ค่าปกติของ SpeedMotor อยู่ในช่วง 1480–1495 rpm
+- ค่าปกติของ TempOilGear อยู่ในช่วง < 65°C
+- ค่าปกติของ TempBearingMotorNDE อยู่ในช่วง < 85°C
+- ค่าปกติของ TempWindingMotorPhase_U/V/W อยู่ในช่วง < 105°C
 
-        2. การตรวจสอบฉนวน
-        ใช้เมกโอห์มมิเตอร์วัดความต้านทานฉนวนก่อนใช้งาน
-        ค่า IR ควรสูงกว่า 1 MΩ ต่อ kV
+กรุณาตอบคำถามเกี่ยวกับการซ่อมบำรุงอย่างละเอียด รวมถึง:
+ขั้นตอนการซ่อม
+อุปกรณ์ที่ต้องใช้
+ข้อควรระวัง
+เวลาที่ใช้โดยประมาณ"""
 
-        3. การทำความสะอาด
-        เป่าฝุ่นออกจากช่องระบายอากาศและใบพัดด้วยลมแห้ง
-        ห้ามใช้น้ำแรงดันสูงหรือสารเคมีที่กัดกร่อน
-
-        4. การตรวจสอบความร้อน
-        ตรวจสอบอุณหภูมิขณะทำงานไม่ให้เกิน Class C (80°C rise)
-        ใช้เซนเซอร์วัดอุณหภูมิที่ฝาครอบหรือแบริ่ง
-
-        5. การตรวจสอบเสียงและการสั่นสะเทือน
-        เสียงรบกวนไม่ควรเกิน 85 dB(A) ที่ระยะ 1 เมตร
-        ตรวจสอบการสั่นด้วย vibration analyzer เพื่อป้องกันการสึกหรอของแบริ่ง
-
-        6. การจัดการความชื้น
-        ถ้ามอเตอร์ไม่ได้ใช้งานนาน ให้ใช้ฮีตเตอร์ภายในหรือจ่ายไฟเบาๆ เพื่อป้องกันความชื้นสะสม
-
-        ข้อมูลเปรียบเทียบค่าปกติของแต่ละsensor:
-        -ค่าปกติของ PowerMotor อยู่ในช่วง 290-315 kW
-        -ค่าปกติของ CurrentMotor อยู่ในช่วง  280–320 Amp
-        -ค่าปกติของ TempBrassBearingDE อยู่ในช่วง < 75 C
-        -ค่าปกติของ SpeedMotor อยู่ในช่วง 1480–1495 rpm
-        -ค่าปกติของ TempOilGear อยู่ในช่วง < 65 C
-        -ค่าปกติของ TempBearingMotorNDE อยู่ในช่วง <85 C
-        -ค่าปกติของ  TempWindingMotorPhase_U และ TempWindingMotorPhase_V และ TempWindingMotorPhase_W อยู่ในช่วง  <105 C
-"""
-
-            # response = bedrock_runtime.invoke_model(
-            #     modelId='us.anthropic.claude-3-haiku-20240307-v1:0',
-            #     body=json.dumps({
-            #         "anthropic_version": "bedrock-2023-05-31",
-            #         "max_tokens": 1024,
-            #         "messages": [
-            #             {
-            #                 "role": "user",
-            #                 "content": prompt
-            #             }
-            #         ]
-            #     })
-            # )
-
-            # response_body = json.loads(response['body'].read())
-            # maintenance_advice = response_body['content'][0]['text']
-            response = bedrock_runtime.converse(
-            modelId="qwen.qwen3-32b-v1:0",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [{"text": prompt}]
+                # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
+                response_body = bedrock_runtime.converse(
+                    modelId="qwen.qwen3-32b-v1:0",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [{"text": prompt}]
+                        }
+                    ],
+                    inferenceConfig={
+                        "maxTokens": 1024
                     }
-                ],
-                inferenceConfig={
-                    "maxTokens": 1024
-                }
-            )
-            maintenance_advice = response['output']['message']['content'][0]['text']
+                )
+                maintenance_advice = response_body['output']['message']['content'][0]['text']
+
+            except Exception as e:
+                print(f"⚠️ RAG lookup failed: {str(e)}")
+                maintenance_advice = f"เกิดข้อผิดพลาดในการค้นหาคู่มือ: {str(e)}"
 
         else:
             maintenance_advice = "เครื่องจักรทำงานปกติ ไม่พบความผิดปกติ"
@@ -654,6 +752,218 @@ async def delete_embedding(filename: str):
         }
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== LINE Bot Endpoints =====
+
+def verify_line_signature(body: bytes, signature: str) -> bool:
+    """Verify LINE webhook signature"""
+    line_notifier = get_line_notifier()
+    if not line_notifier.channel_secret:
+        return False
+
+    hash_digest = hmac.new(
+        line_notifier.channel_secret.encode('utf-8'),
+        body,
+        hashlib.sha256
+    ).digest()
+
+    computed_signature = base64.b64encode(hash_digest).decode('utf-8')
+    return hmac.compare_digest(signature, computed_signature)
+
+
+@app.post("/api/line/webhook")
+async def line_webhook(request: Request, x_line_signature: str = Header(None)):
+    """LINE Bot Webhook endpoint"""
+    try:
+        body = await request.body()
+        print(f"📥 Received webhook request")
+        print(f"   Body length: {len(body)}")
+        print(f"   Signature: {x_line_signature}")
+
+        # Verify signature (disabled for testing)
+        # if not verify_line_signature(body, x_line_signature or ""):
+        #     raise HTTPException(status_code=400, detail="Invalid signature")
+
+        # Parse JSON
+        try:
+            events_data = json.loads(body.decode('utf-8'))
+            print(f"   Parsed JSON: {events_data}")
+        except json.JSONDecodeError as je:
+            print(f"⚠️ JSON decode error: {str(je)}")
+            # Return OK for verification requests that might not have valid JSON
+            return {"status": "ok"}
+
+        # Handle events
+        events_list = events_data.get('events', [])
+        print(f"   Events count: {len(events_list)}")
+
+        for event in events_list:
+            print(f"   Event type: {event.get('type')}")
+
+            if event['type'] == 'message' and event['message']['type'] == 'text':
+                # Handle text message
+                user_id = event['source']['userId']
+                message_text = event['message']['text'].lower()
+
+                # Add user to storage if not exists
+                if user_id not in line_users_store["users"]:
+                    line_users_store["users"].append(user_id)
+                    print(f"✅ New LINE user registered: {user_id}")
+
+                # Reply based on message
+                line_notifier = get_line_notifier()
+
+                if 'สถานะ' in message_text or 'status' in message_text:
+                    # Send current machine status
+                    if uploaded_data_store["dataframe"] is not None:
+                        machines = uploaded_data_store["machines"]
+                        reply = f"📊 สถานะเครื่องจักร\n\n"
+                        reply += f"จำนวนเครื่อง: {len(machines)} เครื่อง\n"
+                        reply += f"รายการ: {', '.join(machines[:5])}"
+                        if len(machines) > 5:
+                            reply += f" และอื่นๆ อีก {len(machines) - 5} เครื่อง"
+                    else:
+                        reply = "⚠️ ยังไม่มีข้อมูลเครื่องจักร"
+
+                    line_notifier.send_push_message(user_id, [{"type": "text", "text": reply}])
+
+                elif 'ช่วยเหลือ' in message_text or 'help' in message_text:
+                    help_text = """🤖 คำสั่งที่ใช้ได้:
+
+1️⃣ 'สถานะ' - ดูสถานะเครื่องจักร
+2️⃣ 'แจ้งเตือน เปิด' - เปิดการแจ้งเตือน
+3️⃣ 'แจ้งเตือน ปิด' - ปิดการแจ้งเตือน
+4️⃣ 'ช่วยเหลือ' - แสดงคำสั่ง
+
+ระบบจะแจ้งเตือนอัตโนมัติเมื่อเครื่องจักรมีความเสี่ยง"""
+
+                    line_notifier.send_push_message(user_id, [{"type": "text", "text": help_text}])
+
+                elif 'แจ้งเตือน' in message_text:
+                    if 'เปิด' in message_text:
+                        line_users_store["alert_settings"][user_id] = True
+                        reply = "✅ เปิดการแจ้งเตือนแล้ว คุณจะได้รับแจ้งเตือนเมื่อเครื่องจักรมีความเสี่ยง"
+                    elif 'ปิด' in message_text:
+                        line_users_store["alert_settings"][user_id] = False
+                        reply = "❌ ปิดการแจ้งเตือนแล้ว"
+                    else:
+                        status = "เปิด ✅" if line_users_store["alert_settings"].get(user_id, True) else "ปิด ❌"
+                        reply = f"สถานะการแจ้งเตือน: {status}"
+
+                    line_notifier.send_push_message(user_id, [{"type": "text", "text": reply}])
+
+                else:
+                    # Default welcome message
+                    welcome_text = """สวัสดีครับ! 👋
+
+ผมเป็นบอทแจ้งเตือนสถานะเครื่องจักร Zero Breakdown
+
+พิมพ์ 'ช่วยเหลือ' เพื่อดูคำสั่งทั้งหมด"""
+
+                    line_notifier.send_push_message(user_id, [{"type": "text", "text": welcome_text}])
+
+            elif event['type'] == 'follow':
+                # User added bot as friend
+                user_id = event['source']['userId']
+                if user_id not in line_users_store["users"]:
+                    line_users_store["users"].append(user_id)
+                    line_users_store["alert_settings"][user_id] = True
+                    print(f"✅ New LINE friend: {user_id}")
+
+        print("✅ Webhook processed successfully")
+        return {"status": "ok"}
+
+    except Exception as e:
+        import traceback
+        print(f"❌ Error in LINE webhook: {str(e)}")
+        print(traceback.format_exc())
+        # Return 200 OK even on error to prevent LINE from retrying
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/api/line/send-alert")
+async def send_line_alert(machine_id: str, alerts: List[str], risk_score: int = 0,
+                         risk_level: str = "ไม่ทราบ", user_id: Optional[str] = None):
+    """ส่งแจ้งเตือนผ่าน LINE Bot"""
+    try:
+        line_notifier = get_line_notifier()
+
+        if not line_notifier.is_configured():
+            raise HTTPException(status_code=503, detail="LINE Bot not configured")
+
+        # Create flex message
+        messages = line_notifier.create_flex_alert_message(
+            machine_id=machine_id,
+            alerts=alerts,
+            risk_score=risk_score,
+            risk_level=risk_level
+        )
+
+        sent_count = 0
+
+        if user_id:
+            # Send to specific user
+            if line_notifier.send_push_message(user_id, messages):
+                sent_count = 1
+        else:
+            # Send to all users with alerts enabled
+            for uid in line_users_store["users"]:
+                if line_users_store["alert_settings"].get(uid, True):
+                    if line_notifier.send_push_message(uid, messages):
+                        sent_count += 1
+
+        return {
+            "success": True,
+            "sent_to": sent_count,
+            "message": f"ส่งแจ้งเตือนไปยัง {sent_count} ผู้ใช้"
+        }
+
+    except Exception as e:
+        import traceback
+        print(f"Error sending LINE alert: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/line/users")
+async def get_line_users():
+    """ดึงรายชื่อผู้ใช้ LINE Bot"""
+    try:
+        users_with_settings = []
+        for user_id in line_users_store["users"]:
+            users_with_settings.append({
+                "user_id": user_id,
+                "alerts_enabled": line_users_store["alert_settings"].get(user_id, True)
+            })
+
+        return {
+            "total_users": len(line_users_store["users"]),
+            "users": users_with_settings
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/line/test-alert")
+async def test_line_alert():
+    """ทดสอบส่งแจ้งเตือนผ่าน LINE"""
+    try:
+        test_alerts = [
+            "CurrentMotor ผิดปกติ: 350 A (เกินค่าปกติ)",
+            "อุณหภูมิสูงกว่าปกติ: 92°C"
+        ]
+
+        result = await send_line_alert(
+            machine_id="Feed Mill 1 (ทดสอบ)",
+            alerts=test_alerts,
+            risk_score=65,
+            risk_level="สูง"
+        )
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

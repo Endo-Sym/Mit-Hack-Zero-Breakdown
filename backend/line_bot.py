@@ -10,7 +10,8 @@ load_dotenv()
 
 class LINENotifier:
     def __init__(self):
-        self.channel_access_token = os.getenv('707da015cd3aaf14a09fd603f0365ca8', '')
+        self.channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', '')
+        self.channel_secret = os.getenv('LINE_CHANNEL_SECRET', '')
         self.line_api_url = 'https://api.line.me/v2/bot/message'
 
     def is_configured(self) -> bool:
@@ -141,7 +142,7 @@ class LINENotifier:
 
     def create_flex_alert_message(self, machine_id: str, alerts: List[str],
                                  risk_score: int = 0, risk_level: str = "ไม่ทราบ",
-                                 sensor_readings: Dict = None) -> List[Dict]:
+                                 sensor_readings: Dict = None, repair_advice: str = None) -> List[Dict]:
         """
         Create rich Flex Message for alert
 
@@ -151,6 +152,7 @@ class LINENotifier:
             risk_score: Risk score (0-100)
             risk_level: Risk level text
             sensor_readings: Dictionary of sensor readings
+            repair_advice: Repair instructions from manual (optional)
 
         Returns:
             List of LINE Flex message objects
@@ -184,6 +186,114 @@ class LINENotifier:
                 "spacing": "sm"
             })
 
+        # Build body contents
+        body_contents = [
+            {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": machine_id,
+                        "weight": "bold",
+                        "size": "xl",
+                        "color": "#1F2937"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"ระดับความเสี่ยง: {risk_level}",
+                        "color": color,
+                        "weight": "bold",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"คะแนน: {risk_score}/100",
+                        "color": "#6B7280",
+                        "size": "sm",
+                        "margin": "xs"
+                    }
+                ],
+                "margin": "none"
+            },
+            {
+                "type": "separator",
+                "margin": "xl"
+            },
+            {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "ปัญหาที่พบ:",
+                        "weight": "bold",
+                        "color": "#1F2937",
+                        "margin": "md"
+                    }
+                ] + alert_contents
+            }
+        ]
+
+        # Add repair advice if provided
+        if repair_advice:
+            body_contents.extend([
+                {
+                    "type": "separator",
+                    "margin": "xl"
+                },
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": "🔧 วิธีซ่อม:",
+                            "weight": "bold",
+                            "color": "#1F2937",
+                            "margin": "md"
+                        },
+                        {
+                            "type": "text",
+                            "text": repair_advice,
+                            "wrap": True,
+                            "color": "#4B5563",
+                            "size": "sm",
+                            "margin": "sm"
+                        }
+                    ]
+                }
+            ])
+
+        # Add footer
+        body_contents.extend([
+            {
+                "type": "separator",
+                "margin": "xl"
+            },
+            {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"⏰ {self._get_thai_datetime()}",
+                        "color": "#9CA3AF",
+                        "size": "xs",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": "💡 กรุณาตรวจสอบเครื่องจักรโดยเร็วที่สุด",
+                        "color": "#6B7280",
+                        "size": "sm",
+                        "margin": "sm",
+                        "wrap": True
+                    }
+                ]
+            }
+        ])
+
         flex_message = {
             "type": "flex",
             "altText": f"⚠️ แจ้งเตือน: {machine_id} - {risk_level}",
@@ -206,78 +316,7 @@ class LINENotifier:
                 "body": {
                     "type": "box",
                     "layout": "vertical",
-                    "contents": [
-                        {
-                            "type": "box",
-                            "layout": "vertical",
-                            "contents": [
-                                {
-                                    "type": "text",
-                                    "text": machine_id,
-                                    "weight": "bold",
-                                    "size": "xl",
-                                    "color": "#1F2937"
-                                },
-                                {
-                                    "type": "text",
-                                    "text": f"ระดับความเสี่ยง: {risk_level}",
-                                    "color": color,
-                                    "weight": "bold",
-                                    "margin": "md"
-                                },
-                                {
-                                    "type": "text",
-                                    "text": f"คะแนน: {risk_score}/100",
-                                    "color": "#6B7280",
-                                    "size": "sm",
-                                    "margin": "xs"
-                                }
-                            ],
-                            "margin": "none"
-                        },
-                        {
-                            "type": "separator",
-                            "margin": "xl"
-                        },
-                        {
-                            "type": "box",
-                            "layout": "vertical",
-                            "contents": [
-                                {
-                                    "type": "text",
-                                    "text": "ปัญหาที่พบ:",
-                                    "weight": "bold",
-                                    "color": "#1F2937",
-                                    "margin": "md"
-                                }
-                            ] + alert_contents
-                        },
-                        {
-                            "type": "separator",
-                            "margin": "xl"
-                        },
-                        {
-                            "type": "box",
-                            "layout": "vertical",
-                            "contents": [
-                                {
-                                    "type": "text",
-                                    "text": f"⏰ {self._get_thai_datetime()}",
-                                    "color": "#9CA3AF",
-                                    "size": "xs",
-                                    "margin": "md"
-                                },
-                                {
-                                    "type": "text",
-                                    "text": "💡 กรุณาตรวจสอบเครื่องจักรโดยเร็วที่สุด",
-                                    "color": "#6B7280",
-                                    "size": "sm",
-                                    "margin": "sm",
-                                    "wrap": True
-                                }
-                            ]
-                        }
-                    ],
+                    "contents": body_contents,
                     "spacing": "md"
                 }
             }
