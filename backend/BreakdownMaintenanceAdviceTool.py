@@ -26,7 +26,8 @@ class BreakdownMaintenanceAdviceTool:
             }
         }
 
-    def analyze_sensors(self, sensor_data: Dict) -> Dict:
+    @staticmethod
+    def analyze_sensors(sensor_data: Dict) -> Dict:
         alerts = []
 
         # PowerMotor thresholds (kW)

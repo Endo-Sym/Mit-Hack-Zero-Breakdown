@@ -18,14 +18,16 @@ function ChatInterface({ messages, setMessages }) {
     setLoading(true)
 
     try {
-      const response = await axios.post(`${API_URL}/api/chat`, {
+      // ใช้ Orchestrator endpoint แทน
+      const response = await axios.post(`${API_URL}/api/orchestrator-chat`, {
         message: input
       })
 
       const assistantMessage = {
         role: 'assistant',
         content: response.data.response,
-        detected_function: response.data.detected_function
+        tools_used: response.data.tools_used,
+        stop_reason: response.data.stop_reason
       }
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
@@ -55,6 +57,11 @@ function ChatInterface({ messages, setMessages }) {
               <div className="message-avatar assistant-avatar">AI</div>
             )}
             <div className="message-bubble">
+              {msg.tools_used && msg.tools_used.length > 0 && (
+                <div className="function-badge">
+                  🔧 Tools: {msg.tools_used.join(', ')}
+                </div>
+              )}
               {msg.detected_function && (
                 <div className="function-badge">{msg.detected_function}</div>
               )}

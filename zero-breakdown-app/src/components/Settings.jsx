@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import './Settings.css'
-import { IoSettings, IoCloudUpload, IoCheckmarkCircle } from 'react-icons/io5'
+import { IoSettings, IoCloudUpload, IoCheckmarkCircle, IoDocumentText } from 'react-icons/io5'
 import { BiLoaderAlt } from 'react-icons/bi'
 import { MdOutlineFactory } from 'react-icons/md'
 
@@ -12,9 +12,34 @@ function Settings() {
   const [customFileName, setCustomFileName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [uploadedData, setUploadedData] = useState(null)
-  const [machines, setMachines] = useState([])
+  const [uploadedData, setUploadedData] = useState(() => {
+    const saved = localStorage.getItem('settingsUploadedData')
+    return saved ? JSON.parse(saved) : null
+  })
+  const [machines, setMachines] = useState(() => {
+    const saved = localStorage.getItem('settingsMachines')
+    return saved ? JSON.parse(saved) : []
+  })
   const [savedFiles, setSavedFiles] = useState([])
+
+  // PDF upload states
+  const [pdfFile, setPdfFile] = useState(null)
+  const [pdfCustomName, setPdfCustomName] = useState('')
+  const [uploadingPdf, setUploadingPdf] = useState(false)
+  const [pdfUploadSuccess, setPdfUploadSuccess] = useState(false)
+
+  // Save to localStorage when data changes
+  useEffect(() => {
+    if (uploadedData) {
+      localStorage.setItem('settingsUploadedData', JSON.stringify(uploadedData))
+    }
+  }, [uploadedData])
+
+  useEffect(() => {
+    if (machines.length > 0) {
+      localStorage.setItem('settingsMachines', JSON.stringify(machines))
+    }
+  }, [machines])
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -56,6 +81,49 @@ function Settings() {
       alert(`เกิดข้อผิดพลาด: ${error.response?.data?.detail || error.message}`)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handlePdfFileChange = (e) => {
+    const selectedFile = e.target.files[0]
+    if (selectedFile && selectedFile.type === 'application/pdf') {
+      setPdfFile(selectedFile)
+      setPdfUploadSuccess(false)
+    } else {
+      alert('กรุณาเลือกไฟล์ PDF เท่านั้น')
+    }
+  }
+
+  const handlePdfUpload = async () => {
+    if (!pdfFile) {
+      alert('กรุณาเลือกไฟล์ PDF ก่อน')
+      return
+    }
+
+    setUploadingPdf(true)
+    const formData = new FormData()
+    formData.append('file', pdfFile)
+    if (pdfCustomName.trim()) {
+      formData.append('custom_name', pdfCustomName)
+    }
+
+    try {
+      const response = await axios.post(`${API_URL}/api/upload-pdf`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+
+      setPdfUploadSuccess(true)
+      setPdfCustomName('')
+      setPdfFile(null)
+
+      setTimeout(() => setPdfUploadSuccess(false), 3000)
+      alert(`สร้าง Embeddings สำเร็จ: ${response.data.filename}`)
+    } catch (error) {
+      alert(`เกิดข้อผิดพลาด: ${error.response?.data?.detail || error.message}`)
+    } finally {
+      setUploadingPdf(false)
     }
   }
 
@@ -118,6 +186,65 @@ function Settings() {
             <li>ต้องมีคอลัมน์: Timestamp, Machine_ID, PowerMotor, CurrentMotor, TempBrassBearingDE, SpeedMotor, TempOilGear, TempBearingMotorNDE</li>
             <li>ต้องมีคอลัมน์: TempWindingMotorPhase_U, TempWindingMotorPhase_V, TempWindingMotorPhase_W, Vibration</li>
             <li>รูปแบบวันที่: YYYY-MM-DD HH:MM:SS</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3><IoDocumentText style={{ marginRight: '0.5rem' }} />อัพโหลดคู่มือซ่อมบำรุง (PDF)</h3>
+        <p className="section-description">
+          อัพโหลดคู่มือ PDF เพื่อสร้าง Embeddings สำหรับระบบ RAG ที่ช่วยตอบคำถามเกี่ยวกับการซ่อมบำรุง
+        </p>
+
+        <div className="upload-box">
+          <div className="file-input-wrapper">
+            <input
+              type="file"
+              id="pdf-file"
+              accept=".pdf"
+              onChange={handlePdfFileChange}
+              className="file-input"
+            />
+            <label htmlFor="pdf-file" className="file-label">
+              <IoDocumentText className="upload-icon" />
+              <span>{pdfFile ? pdfFile.name : 'เลือกไฟล์ PDF'}</span>
+            </label>
+          </div>
+
+          <input
+            type="text"
+            value={pdfCustomName}
+            onChange={(e) => setPdfCustomName(e.target.value)}
+            placeholder="ตั้งชื่อคู่มือ (ไม่จำเป็น)"
+            className="custom-name-input"
+          />
+
+          <button
+            onClick={handlePdfUpload}
+            disabled={uploadingPdf || !pdfFile}
+            className="btn-upload"
+          >
+            {uploadingPdf ? (
+              <><BiLoaderAlt className="spin-icon" /> กำลังสร้าง Embeddings...</>
+            ) : (
+              <><IoCloudUpload style={{ marginRight: '0.5rem' }} /> สร้าง Embeddings</>
+            )}
+          </button>
+
+          {pdfUploadSuccess && (
+            <div className="success-message">
+              <IoCheckmarkCircle style={{ marginRight: '0.5rem' }} />
+              สร้าง Embeddings สำเร็จ!
+            </div>
+          )}
+        </div>
+
+        <div className="file-format-info">
+          <h4>ข้อมูล Embeddings:</h4>
+          <ul>
+            <li>ไฟล์ PDF จะถูกแปลงเป็น text embeddings ด้วย AWS Bedrock Titan</li>
+            <li>บันทึกเป็นไฟล์ JSON ที่ /opt/dlami/nvme/embeddings/</li>
+            <li>ใช้สำหรับระบบ RAG ตอบคำถามการซ่อมบำรุง</li>
           </ul>
         </div>
       </div>

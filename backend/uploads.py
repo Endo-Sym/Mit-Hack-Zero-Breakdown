@@ -4,12 +4,21 @@ import boto3
 import os
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # AWS Bedrock setup
-AWS_REGION = "us-west-2"
-bedrock = boto3.client("bedrock-runtime", region_name=AWS_REGION)
+AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-west-2")
+bedrock = boto3.client(
+    "bedrock-runtime",
+    region_name=AWS_REGION,
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+)
 
-# Directory to store embeddings
+# Directory to store embeddings - AWS Cloud Path
 EMBEDDINGS_DIR = "/opt/dlami/nvme/embeddings"
 os.makedirs(EMBEDDINGS_DIR, exist_ok=True)
 

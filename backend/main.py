@@ -12,6 +12,7 @@ from io import StringIO
 from dotenv import load_dotenv
 from configs import SensorReadings, MachineData, ChatMessage
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
+from Orchestrator import Orchestrator
 import uploads
 
 # Load environment variables
@@ -114,18 +115,38 @@ async def upload_csv(file: UploadFile = File(...), custom_name: Optional[str] = 
         max_date = df['Timestamp'].max().strftime('%Y-%m-%d')
         date_range = f"{min_date} ถึง {max_date}"
 
-        # Save CSV file to disk
+        # Save as JSON file to disk - AWS Cloud Path
         CSV_DIR = "/opt/dlami/nvme/csv_data"
         os.makedirs(CSV_DIR, exist_ok=True)
 
         if custom_name:
-            csv_filename = f"{custom_name}.csv"
+            json_filename = f"{custom_name}.json"
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            csv_filename = f"factory_data_{timestamp}.csv"
+            json_filename = f"factory_data_{timestamp}.json"
 
-        csv_filepath = os.path.join(CSV_DIR, csv_filename)
-        df.to_csv(csv_filepath, index=False)
+        json_filepath = os.path.join(CSV_DIR, json_filename)
+
+        # Convert DataFrame to JSON with metadata
+        json_data = {
+            "metadata": {
+                "filename": json_filename,
+                "original_file": file.filename,
+                "uploaded_at": datetime.now().isoformat(),
+                "total_rows": len(df),
+                "total_machines": len(machines),
+                "date_range": date_range,
+                "completeness": round(completeness, 2),
+                "missing_values": int(missing_values),
+                "custom_name": custom_name or f"factory_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            },
+            "machines": machines,
+            "data": json.loads(df.to_json(orient='records', date_format='iso'))
+        }
+
+        # Save to JSON file
+        with open(json_filepath, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=2)
 
         # Store data globally
         uploaded_data_store["dataframe"] = df
@@ -136,8 +157,8 @@ async def upload_csv(file: UploadFile = File(...), custom_name: Optional[str] = 
             "date_range": date_range,
             "completeness": round(completeness, 2),
             "missing_values": int(missing_values),
-            "saved_file": csv_filename,
-            "filepath": csv_filepath
+            "saved_file": json_filename,
+            "filepath": json_filepath
         }
 
         return {
@@ -145,11 +166,13 @@ async def upload_csv(file: UploadFile = File(...), custom_name: Optional[str] = 
             "total_machines": len(machines),
             "machines": machines,
             "date_range": date_range,
+            "saved_file": json_filename,
+            "filepath": json_filepath,
             "data_quality": {
                 "completeness": round(completeness, 2),
                 "missing_values": int(missing_values)
             },
-            "message": "อัพโหลดและประมวลผลข้อมูลสำเร็จ"
+            "message": f"อัพโหลดและบันทึกข้อมูลเป็น JSON สำเร็จ: {json_filename}"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -355,22 +378,62 @@ async def predict_breakdown(data: MachineData):
 
 @app.post("/api/repair-manual")
 async def get_repair_manual(request: ChatMessage):
-
-#------------ prompt นี้ รอ ทำ RAG--------------------------------
-
-    """ค้นหาคู่มือการซ่อม (ใช้ AI ตอบคำถาม)"""
+    """ค้นหาคู่มือการซ่อม (ใช้ RAG จาก PDF embeddings)"""
     try:
+        # 1. สร้าง embedding จากคำถาม
+        question_embedding_response = bedrock_runtime.invoke_model(
+            modelId="amazon.titan-embed-text-v2:0",
+            body=json.dumps({"inputText": request.message})
+        )
+        question_embedding = json.loads(question_embedding_response["body"].read())["embedding"]
+
+        # 2. ค้นหา embeddings ที่เกี่ยวข้องจากไฟล์ที่อัปโหลด
+        embedding_files = uploads.list_embedding_files()
+
+        relevant_contexts = []
+        if embedding_files:
+            for file_info in embedding_files[:3]:  # ใช้ 3 ไฟล์ล่าสุด
+                try:
+                    embedding_data = uploads.load_embeddings_from_file(file_info['path'])
+                    texts = embedding_data.get('texts', [])
+                    embeddings = embedding_data.get('embeddings', [])
+
+                    # คำนวณ cosine similarity
+                    similarities = []
+                    for idx, emb in enumerate(embeddings):
+                        # Cosine similarity
+                        dot_product = sum(a * b for a, b in zip(question_embedding, emb))
+                        norm_q = sum(a * a for a in question_embedding) ** 0.5
+                        norm_e = sum(b * b for b in emb) ** 0.5
+                        similarity = dot_product / (norm_q * norm_e) if (norm_q * norm_e) > 0 else 0
+                        similarities.append((similarity, texts[idx]))
+
+                    # เอา top 3 ที่มีความคล้ายมากที่สุด
+                    top_contexts = sorted(similarities, key=lambda x: x[0], reverse=True)[:3]
+                    relevant_contexts.extend([ctx[1] for ctx in top_contexts if ctx[0] > 0.5])
+                except Exception as e:
+                    print(f"Error loading embedding file {file_info['filename']}: {e}")
+                    continue
+
+        # 3. สร้าง prompt พร้อม context จาก RAG
+        context_text = "\n\n".join(relevant_contexts) if relevant_contexts else "ไม่พบข้อมูลจากคู่มือ"
+
         prompt = f"""คุณเป็นผู้เชี่ยวชาญด้านการซ่อมบำรุงเครื่องจักรโรงงานน้ำตาล โดยเฉพาะระบบ Feed Mill
+
+ข้อมูลจากคู่มือการซ่อมบำรุง:
+{context_text}
 
 คำถาม: {request.message}
 
-กรุณาตอบคำถามเกี่ยวกับการซ่อมบำรุงอย่างละเอียด รวมถึง:
+กรุณาตอบคำถามเกี่ยวกับการซ่อมบำรุงอย่างละเอียดโดยอิงจากข้อมูลจากคู่มือข้างต้น รวมถึง:
 1. ขั้นตอนการซ่อม
 2. อุปกรณ์ที่ต้องใช้
 3. ข้อควรระวัง
-4. เวลาที่ใช้โดยประมาณ"""
+4. เวลาที่ใช้โดยประมาณ
 
-        # ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
+หากข้อมูลในคู่มือไม่เพียงพอ ให้แจ้งผู้ใช้และให้คำแนะนำทั่วไป"""
+
+        # 4. ส่งคำขอไปยังโมเดล qwen.qwen3-32b-v1:0 ผ่าน API
         response_body = bedrock_runtime.converse(
             modelId="qwen.qwen3-32b-v1:0",
             messages=[
@@ -380,7 +443,7 @@ async def get_repair_manual(request: ChatMessage):
                 }
             ],
             inferenceConfig={
-                "maxTokens": 1024
+                "maxTokens": 2048
             }
         )
         manual_content = response_body['output']['message']['content'][0]['text']
@@ -404,9 +467,14 @@ async def get_repair_manual(request: ChatMessage):
 
         return {
             "question": request.message,
-            "answer": manual_content
+            "answer": manual_content,
+            "sources_found": len(relevant_contexts),
+            "total_files_searched": len(embedding_files)
         }
     except Exception as e:
+        import traceback
+        print(f"Error in /api/repair-manual: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat")
@@ -476,6 +544,31 @@ async def chat_agent(request: ChatMessage):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/orchestrator-chat")
+async def orchestrator_chat(request: ChatMessage):
+    """Orchestrator-based Chat - ใช้ Tool calling ผ่าน AWS Bedrock"""
+    try:
+        print(f"Received orchestrator chat request: {request.message}")
+
+        # สร้าง Orchestrator instance และส่ง user input เข้าไป
+        orchestrator = Orchestrator()
+
+        # เรียกใช้ run() โดยส่ง user_input เข้าไป (ใช้ _get_user_input ภายใน)
+        response_text = orchestrator.run(user_input=request.message)
+
+        return {
+            "message": request.message,
+            "response": response_text,
+            "tools_used": [],  # Orchestrator จะจัดการ tools ภายใน
+            "stop_reason": "completed"
+        }
+
+    except Exception as e:
+        import traceback
+        print(f"Error in /api/orchestrator-chat: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ===== Embeddings Management Endpoints =====
 
 class RenameRequest(BaseModel):
@@ -487,7 +580,10 @@ async def upload_pdf(file: UploadFile = File(...), custom_name: Optional[str] = 
     """อัพโหลดไฟล์ PDF และสร้าง embeddings"""
     try:
         # Save temp PDF file
-        temp_path = f"/tmp/{file.filename}"
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, file.filename)
+
         with open(temp_path, "wb") as f:
             content = await file.read()
             f.write(content)
@@ -504,6 +600,9 @@ async def upload_pdf(file: UploadFile = File(...), custom_name: Optional[str] = 
             **result
         }
     except Exception as e:
+        import traceback
+        print(f"Error in /api/upload-pdf: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -1,0 +1,40 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - cd zero-breakdown-app
+        - npm ci
+        - echo "Node version:" && node --version
+        - echo "NPM version:" && npm --version
+    build:
+      commands:
+        - npm run build
+        - echo "Build completed successfully"
+  artifacts:
+    baseDirectory: zero-breakdown-app/dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - zero-breakdown-app/node_modules/**/*
+backend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Python version:" && python --version
+        - echo "Pip version:" && pip --version
+        - cd backend
+        - python -m pip install --upgrade pip setuptools wheel
+        - pip install -r requirements.txt --no-cache-dir
+    build:
+      commands:
+        - echo "Backend dependencies installed successfully"
+        - ls -la
+    post_build:
+      commands:
+        - echo "Backend build completed"
+  artifacts:
+    baseDirectory: backend
+    files:
+      - '**/*'
