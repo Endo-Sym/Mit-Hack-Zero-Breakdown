@@ -94,11 +94,11 @@ function Dashboard() {
               id="current-motor-gauge"
               nrOfLevels={3}
               percent={currentValues.currentMotor / 400}
-              textColor="#000"
-              colors={["#10b981", "#fbbf24", "#ef4444"]}
-              arcWidth={0.25}
-              needleColor="#334155"
-              needleBaseColor="#334155"
+              textColor="#F3F4F6"
+              colors={["#10b981", "#FBBF24", "#EF4444"]}
+              arcWidth={0.3}
+              needleColor="#A78BFA"
+              needleBaseColor="#F472B6"
               hideText={true}
             />
             <div className="gauge-label">CURRENT MOTOR</div>
@@ -111,11 +111,11 @@ function Dashboard() {
               id="temperature-gauge"
               nrOfLevels={3}
               percent={currentValues.temperature / 100}
-              textColor="#000"
-              colors={["#10b981", "#fbbf24", "#ef4444"]}
-              arcWidth={0.25}
-              needleColor="#334155"
-              needleBaseColor="#334155"
+              textColor="#F3F4F6"
+              colors={["#10b981", "#FBBF24", "#EF4444"]}
+              arcWidth={0.3}
+              needleColor="#A78BFA"
+              needleBaseColor="#F472B6"
               hideText={true}
             />
             <div className="gauge-label">TEMPERATURE<br/>BEARING MOTOR</div>
@@ -133,24 +133,33 @@ function Dashboard() {
             </div>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(167, 139, 250, 0.2)" />
                 <XAxis
                   dataKey="timestamp"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: '#C4B5FD' }}
+                  stroke="rgba(167, 139, 250, 0.3)"
                   interval={10}
-                  label={{ value: 'Time', position: 'insideBottom', offset: -5 }}
+                  label={{ value: 'Time', position: 'insideBottom', offset: -5, fill: '#C4B5FD' }}
                 />
                 <YAxis
                   domain={[0, 400]}
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: '#C4B5FD' }}
+                  stroke="rgba(167, 139, 250, 0.3)"
                   ticks={[0, 100, 200, 300, 400]}
                 />
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(26, 22, 37, 0.95)',
+                    border: '1px solid rgba(167, 139, 250, 0.3)',
+                    borderRadius: '8px',
+                    color: '#F3F4F6'
+                  }}
+                />
                 <Line
                   type="monotone"
                   dataKey="current"
-                  stroke="#1e40af"
-                  strokeWidth={2}
+                  stroke="#60A5FA"
+                  strokeWidth={3}
                   dot={false}
                 />
               </LineChart>
@@ -165,24 +174,33 @@ function Dashboard() {
             </div>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(167, 139, 250, 0.2)" />
                 <XAxis
                   dataKey="timestamp"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: '#C4B5FD' }}
+                  stroke="rgba(167, 139, 250, 0.3)"
                   interval={10}
-                  label={{ value: 'Time', position: 'insideBottom', offset: -5 }}
+                  label={{ value: 'Time', position: 'insideBottom', offset: -5, fill: '#C4B5FD' }}
                 />
                 <YAxis
                   domain={[0, 100]}
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: '#C4B5FD' }}
+                  stroke="rgba(167, 139, 250, 0.3)"
                   ticks={[0, 20, 40, 60, 80, 100]}
                 />
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(26, 22, 37, 0.95)',
+                    border: '1px solid rgba(167, 139, 250, 0.3)',
+                    borderRadius: '8px',
+                    color: '#F3F4F6'
+                  }}
+                />
                 <Line
                   type="monotone"
                   dataKey="temperature"
-                  stroke="#1e40af"
-                  strokeWidth={2}
+                  stroke="#F472B6"
+                  strokeWidth={3}
                   dot={false}
                 />
               </LineChart>

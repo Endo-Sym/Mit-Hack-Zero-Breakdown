@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import ChatInterface from './components/ChatInterface'
 import SensorAnalysis from './components/SensorAnalysis'
@@ -9,8 +9,52 @@ import { IoChatbubbleEllipses, IoSettings } from "react-icons/io5"
 import { MdAnalytics, MdDashboard } from "react-icons/md"
 import { FaTools } from "react-icons/fa"
 
+// Default initial messages
+const defaultChatMessages = [
+  {
+    role: 'assistant',
+    content: 'สวัสดีครับ! ผมคือ AI Agent สำหรับระบบ Zero Breakdown Prediction\n\nผมสามารถช่วยคุณได้ใน 2 เรื่องหลัก:\n\n1. 📊 **ทำนาย Zero Breakdown** - วิเคราะห์ข้อมูล sensor และทำนายความเสี่ยงของเครื่องจักร\n2. 📖 **คู่มือการซ่อม** - ค้นหาวิธีการซ่อมและข้อมูลทางเทคนิค\n\nมีอะไรให้ช่วยไหมครับ?'
+  }
+]
+
+const defaultManualConversations = [
+  {
+    question: 'ยินดีต้อนรับ',
+    answer: '# 📖 คู่มือการซ่อมบำรุงเครื่องจักร\n\nระบบนี้จะช่วยตอบคำถามเกี่ยวกับการซ่อมบำรุงเครื่องจักรโรงงานน้ำตาล โดยเฉพาะระบบ Feed Mill\n\n**ตัวอย่างคำถาม:**\n- วิธีการเปลี่ยนน้ำมันเกียร์\n- อาการที่แสดงว่า bearing เสียหาย\n- ขั้นตอนการตรวจสอบมอเตอร์\n- วิธีแก้ปัญหาอุณหภูมิสูง\n- การบำรุงรักษาป้องกัน\n\nถามได้เลยครับ!'
+  }
+]
+
 function App() {
-  const [activeTab, setActiveTab] = useState('chat')
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('activeTab') || 'chat'
+  })
+
+  // State for Chat Interface - Load from localStorage
+  const [chatMessages, setChatMessages] = useState(() => {
+    const saved = localStorage.getItem('chatMessages')
+    return saved ? JSON.parse(saved) : defaultChatMessages
+  })
+
+  // State for Repair Manual - Load from localStorage
+  const [manualConversations, setManualConversations] = useState(() => {
+    const saved = localStorage.getItem('manualConversations')
+    return saved ? JSON.parse(saved) : defaultManualConversations
+  })
+
+  // Save to localStorage whenever chatMessages changes
+  useEffect(() => {
+    localStorage.setItem('chatMessages', JSON.stringify(chatMessages))
+  }, [chatMessages])
+
+  // Save to localStorage whenever manualConversations changes
+  useEffect(() => {
+    localStorage.setItem('manualConversations', JSON.stringify(manualConversations))
+  }, [manualConversations])
+
+  // Save active tab to localStorage
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab)
+  }, [activeTab])
 
   return (
     <div className="app-container">
@@ -85,9 +129,19 @@ function App() {
 
         <div className="main-content">
           {activeTab === 'dashboard' && <Dashboard />}
-          {activeTab === 'chat' && <ChatInterface />}
+          {activeTab === 'chat' && (
+            <ChatInterface
+              messages={chatMessages}
+              setMessages={setChatMessages}
+            />
+          )}
           {activeTab === 'sensor' && <SensorAnalysis />}
-          {activeTab === 'manual' && <RepairManual />}
+          {activeTab === 'manual' && (
+            <RepairManual
+              conversations={manualConversations}
+              setConversations={setManualConversations}
+            />
+          )}
           {activeTab === 'settings' && <Settings />}
         </div>
       </main>

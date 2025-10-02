@@ -1,5 +1,5 @@
 .repair-manual-container {
-  background: white;
+  background: transparent;
   padding: 2rem;
   height: 100%;
   display: flex;
@@ -9,26 +9,38 @@
 
 .repair-manual-container h2 {
   margin-top: 0;
-  color: #333;
+  margin-bottom: 1rem;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
 }
 
 .description {
-  color: #666;
+  color: rgba(243, 244, 246, 0.8);
   font-size: 1.05rem;
   margin-bottom: 1.5rem;
 }
 
 .quick-questions {
   margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: #f9f9f9;
-  border-radius: 8px;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(15, 10, 30, 0.4);
 }
 
 .quick-questions strong {
   display: block;
   margin-bottom: 0.75rem;
-  color: #555;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .quick-buttons {
@@ -39,19 +51,23 @@
 
 .quick-button {
   padding: 0.5rem 1rem;
-  background: white;
-  border: 2px solid #667eea;
-  color: #667eea;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  color: var(--primary-glow);
   border-radius: 20px;
   cursor: pointer;
   font-size: 0.9rem;
+  font-weight: 500;
   transition: all 0.3s ease;
 }
 
 .quick-button:hover:not(:disabled) {
-  background: #667eea;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
   transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
+  border-color: transparent;
 }
 
 .quick-button:disabled {
@@ -64,8 +80,8 @@
   overflow-y: auto;
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: #fafafa;
-  border-radius: 8px;
+  background: transparent;
+  border-radius: 16px;
 }
 
 .conversation-block {
@@ -90,36 +106,44 @@
 
 .question-header {
   margin-bottom: 0.5rem;
-  color: #667eea;
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .question-content {
-  background: #667eea;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
-  padding: 1rem;
-  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
   font-size: 1.05rem;
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 .answer-block {
-  background: white;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   padding: 1.5rem;
-  border-radius: 12px;
-  border: 2px solid #e0e0e0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(15, 10, 30, 0.4);
 }
 
 .answer-block.loading {
-  border-color: #667eea;
+  border-color: rgba(167, 139, 250, 0.3);
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.2);
 }
 
 .answer-header {
   margin-bottom: 1rem;
-  color: #48bb78;
+  color: #10B981;
+  font-weight: 600;
 }
 
 .answer-content {
-  color: #333;
+  color: var(--text);
   line-height: 1.8;
 }
 
@@ -127,9 +151,10 @@
 .answer-content h2,
 .answer-content h3,
 .answer-content h4 {
-  color: #667eea;
+  color: var(--primary);
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
+  font-weight: 600;
 }
 
 .answer-content h1:first-child,
@@ -149,11 +174,28 @@
 }
 
 .answer-content strong {
-  color: #667eea;
+  color: var(--primary-glow);
+  font-weight: 600;
 }
 
 .answer-content p {
   margin-bottom: 1rem;
+}
+
+.answer-content code {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: var(--accent-glow);
+}
+
+.answer-content pre {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1rem 0;
 }
 
 .typing-indicator {
@@ -165,7 +207,7 @@
 .typing-indicator span {
   width: 10px;
   height: 10px;
-  background: #667eea;
+  background: var(--primary);
   border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -189,29 +231,34 @@
 
 .manual-input-container {
   padding: 1.5rem 2rem 2rem 2rem;
-  background: white;
-  border-top: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .input-wrapper {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: white;
-  border: 2px solid #e0e0e0;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   padding: 0.5rem 0.75rem;
-  transition: border-color 0.3s;
+  transition: all 0.3s ease;
 }
 
 .input-wrapper:focus-within {
-  border-color: #667eea;
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.2);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .attach-button {
   background: transparent;
   border: none;
-  color: #666;
+  color: rgba(243, 244, 246, 0.7);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -222,8 +269,8 @@
 }
 
 .attach-button:hover {
-  background: #f0f0f0;
-  color: #333;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
 }
 
 .manual-input {
@@ -234,14 +281,15 @@
   font-size: 0.95rem;
   font-family: inherit;
   background: transparent;
+  color: var(--text);
 }
 
 .manual-input::placeholder {
-  color: #999;
+  color: rgba(243, 244, 246, 0.5);
 }
 
 .send-button {
-  background: gray;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   border: none;
   color: white;
   cursor: pointer;
@@ -252,16 +300,18 @@
   border-radius: 50%;
   width: 36px;
   height: 36px;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
 }
 
 .send-button:hover:not(:disabled) {
-  background: #5568d3;
-  transform: scale(1.05);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(167, 139, 250, 0.4);
 }
 
 .send-button:disabled {
-  background: #ccc;
+  background: rgba(255, 255, 255, 0.1);
   cursor: not-allowed;
   opacity: 0.5;
+  box-shadow: none;
 }

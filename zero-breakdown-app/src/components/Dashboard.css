@@ -1,5 +1,5 @@
 .dashboard-container {
-  background: #f5f5f5;
+  background: transparent;
   padding: 2rem;
   height: 100%;
   overflow-y: auto;
@@ -7,19 +7,32 @@
 
 .dashboard-header {
   margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(244, 114, 182, 0.05));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 20px 50px rgba(15, 10, 30, 0.5);
 }
 
 .dashboard-header h2 {
   margin: 0 0 0.5rem 0;
-  color: #333;
   display: flex;
   align-items: center;
-  font-size: 2rem;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
 }
 
 .description {
-  color: #666;
-  font-size: 1.05rem;
+  color: rgba(243, 244, 246, 0.8);
+  font-size: 1.1rem;
+  font-weight: 400;
   margin: 0;
 }
 
@@ -33,25 +46,29 @@
 
 .machine-btn {
   padding: 0.75rem 1.5rem;
-  background: white;
-  border: 2px solid #ddd;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  color: #333;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text);
 }
 
 .machine-btn:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
+  border-color: rgba(167, 139, 250, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(167, 139, 250, 0.2);
 }
 
 .machine-btn.active {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
-  border-color: #3b82f6;
+  border-color: var(--primary);
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
 }
 
 /* Main Dashboard Layout */
@@ -59,10 +76,13 @@
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 2rem;
-  background: white;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(15, 10, 30, 0.6);
 }
 
 /* Gauges Section */
@@ -73,21 +93,47 @@
 }
 
 .gauge-card {
-  background: #f8fafc;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(15px);
   padding: 1.5rem;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.gauge-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.gauge-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(167, 139, 250, 0.3);
+  box-shadow: 0 20px 40px rgba(15, 10, 30, 0.7), 0 0 20px rgba(167, 139, 250, 0.1);
+}
+
+.gauge-card:hover::before {
+  opacity: 1;
 }
 
 .gauge-label {
   text-align: center;
   font-weight: 600;
-  color: #475569;
+  color: rgba(243, 244, 246, 0.6);
   margin-top: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -95,9 +141,10 @@
 .gauge-value {
   text-align: center;
   font-size: 1.8rem;
-  font-weight: bold;
-  color: #1e293b;
+  font-weight: 700;
+  color: var(--text);
   margin-top: 0.5rem;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
 /* Charts Section */
@@ -108,10 +155,17 @@
 }
 
 .chart-card {
-  background: #ffffff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 1.5rem;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+.chart-card:hover {
+  border-color: rgba(167, 139, 250, 0.2);
+  box-shadow: 0 10px 30px rgba(15, 10, 30, 0.5);
 }
 
 .chart-header {
@@ -120,24 +174,24 @@
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .chart-header h3 {
   margin: 0;
-  color: #1e293b;
-  font-size: 1.2rem;
+  color: var(--text);
+  font-size: 1.25rem;
   font-weight: 600;
 }
 
 .status-indicator {
   padding: 0.4rem 0.9rem;
-  background: #fef3c7;
-  color: #92400e;
-  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--accent-glow);
+  border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  border: 1px solid #fcd34d;
+  border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 /* Responsive adjustments */

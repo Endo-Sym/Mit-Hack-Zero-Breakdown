@@ -14,6 +14,8 @@ class SensorReadings(BaseModel):
     Speed_Roller: float
     Temperator_Brass_bearing_DE: float
     Temperator_Brass_bearing_NDE: float
+    Temperator_Bearing_Motor_DE: float
+    Temperator_Bearing_Motor_NDE: float
     Temperator_Oil_Gear: float
     Temperator_Winding_Motor_Phase_U: float
     Temperator_Winding_Motor_Phase_V: float

@@ -9,10 +9,12 @@ const API_URL = 'http://localhost:8000'
 
 function Settings() {
   const [file, setFile] = useState(null)
+  const [customFileName, setCustomFileName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [uploadedData, setUploadedData] = useState(null)
   const [machines, setMachines] = useState([])
+  const [savedFiles, setSavedFiles] = useState([])
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -33,6 +35,9 @@ function Settings() {
     setUploading(true)
     const formData = new FormData()
     formData.append('file', file)
+    if (customFileName.trim()) {
+      formData.append('custom_name', customFileName)
+    }
 
     try {
       const response = await axios.post(`${API_URL}/api/upload-csv`, formData, {
@@ -44,6 +49,7 @@ function Settings() {
       setUploadedData(response.data)
       setMachines(response.data.machines || [])
       setUploadSuccess(true)
+      setCustomFileName('')
 
       setTimeout(() => setUploadSuccess(false), 3000)
     } catch (error) {
@@ -77,6 +83,14 @@ function Settings() {
               <span>{file ? file.name : 'เลือกไฟล์ CSV'}</span>
             </label>
           </div>
+
+          <input
+            type="text"
+            value={customFileName}
+            onChange={(e) => setCustomFileName(e.target.value)}
+            placeholder="ตั้งชื่อไฟล์ (ไม่จำเป็น)"
+            className="custom-name-input"
+          />
 
           <button
             onClick={handleUpload}
@@ -158,6 +172,7 @@ function Settings() {
           )}
         </div>
       )}
+
     </div>
   )
 }

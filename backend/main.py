@@ -12,6 +12,7 @@ from io import StringIO
 from dotenv import load_dotenv
 from configs import SensorReadings, MachineData, ChatMessage
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
+import uploads
 
 # Load environment variables
 
@@ -72,7 +73,7 @@ def read_root():
     return {"message": "Zero Breakdown Prediction API", "status": "running"}
 
 @app.post("/api/upload-csv")
-async def upload_csv(file: UploadFile = File(...)):
+async def upload_csv(file: UploadFile = File(...), custom_name: Optional[str] = None):
     """อัพโหลดและประมวลผลไฟล์ CSV ข้อมูลเครื่องจักร"""
     try:
         # Read CSV file
@@ -113,6 +114,19 @@ async def upload_csv(file: UploadFile = File(...)):
         max_date = df['Timestamp'].max().strftime('%Y-%m-%d')
         date_range = f"{min_date} ถึง {max_date}"
 
+        # Save CSV file to disk
+        CSV_DIR = "/opt/dlami/nvme/csv_data"
+        os.makedirs(CSV_DIR, exist_ok=True)
+
+        if custom_name:
+            csv_filename = f"{custom_name}.csv"
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            csv_filename = f"factory_data_{timestamp}.csv"
+
+        csv_filepath = os.path.join(CSV_DIR, csv_filename)
+        df.to_csv(csv_filepath, index=False)
+
         # Store data globally
         uploaded_data_store["dataframe"] = df
         uploaded_data_store["machines"] = machines
@@ -121,7 +135,9 @@ async def upload_csv(file: UploadFile = File(...)):
             "total_machines": len(machines),
             "date_range": date_range,
             "completeness": round(completeness, 2),
-            "missing_values": int(missing_values)
+            "missing_values": int(missing_values),
+            "saved_file": csv_filename,
+            "filepath": csv_filepath
         }
 
         return {
@@ -459,6 +475,96 @@ async def chat_agent(request: ChatMessage):
         print(f"Error in /api/chat: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+# ===== Embeddings Management Endpoints =====
+
+class RenameRequest(BaseModel):
+    old_filename: str
+    new_name: str
+
+@app.post("/api/upload-pdf")
+async def upload_pdf(file: UploadFile = File(...), custom_name: Optional[str] = None):
+    """อัพโหลดไฟล์ PDF และสร้าง embeddings"""
+    try:
+        # Save temp PDF file
+        temp_path = f"/tmp/{file.filename}"
+        with open(temp_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        # Generate and save embeddings
+        result = uploads.save_embedding(temp_path, custom_name)
+
+        # Remove temp file
+        os.remove(temp_path)
+
+        return {
+            "success": True,
+            "message": "สร้าง embeddings สำเร็จ",
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/embeddings")
+async def list_embeddings():
+    """ดึงรายการไฟล์ embeddings ทั้งหมด"""
+    try:
+        files = uploads.list_embedding_files()
+        return {
+            "files": files,
+            "total": len(files)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/embeddings/{filename}")
+async def get_embedding_info(filename: str):
+    """ดึงข้อมูลรายละเอียดของไฟล์ embedding"""
+    try:
+        info = uploads.get_embedding_file_info(filename)
+        return info
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/embeddings/rename")
+async def rename_embedding(request: RenameRequest):
+    """เปลี่ยนชื่อไฟล์ embedding"""
+    try:
+        result = uploads.rename_embedding_file(request.old_filename, request.new_name)
+        return {
+            "success": True,
+            "message": "เปลี่ยนชื่อไฟล์สำเร็จ",
+            **result
+        }
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except FileExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/embeddings/{filename}")
+async def delete_embedding(filename: str):
+    """ลบไฟล์ embedding"""
+    try:
+        result = uploads.delete_embedding_file(filename)
+        return {
+            "success": True,
+            "message": "ลบไฟล์สำเร็จ",
+            **result
+        }
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn

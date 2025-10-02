@@ -28,7 +28,7 @@ class BreakdownMaintenanceAdviceTool:
 
     def analyze_sensors(self, sensor_data: Dict) -> Dict:
         alerts = []
-    
+
         # PowerMotor thresholds (kW)
         power = sensor_data.get('Power_Motor', 0)
         if 290 <= power <= 315:
@@ -122,7 +122,7 @@ class BreakdownMaintenanceAdviceTool:
         elif (1450 <= speed_motor < 1470) or (1500 < speed_motor <= 1510):
             status_speed = "ผิดปกติ"
             alerts.append(f"SpeedMotor: มีสถานะเป็น{status_speed} มีค่า {speed_motor} rpm คือ ต้องตรวจสอบความเร็วที่สัมพันธ์กับspeed_roller_value")
-        elif (1400 <= speed_motor < 1450) or (1510 < soeed_motor <= 1520):
+        elif (1400 <= speed_motor < 1450) or (1510 < speed_motor <= 1520):
             status_speed = "เสี่ยง"
             alerts.append(f"SpeedMotor: มีสถานะเป็น{status_speed} มีค่า {speed_motor} rpm คือ ต้องตรวจสอบความเร็วที่สัมพันธ์กับspeed_roller_value")
         else:
@@ -142,7 +142,7 @@ class BreakdownMaintenanceAdviceTool:
 
         if speed_roller == 0:
             status_speed_roller = "เสียหาย"
-            alerts.append(f"SpeedRoller:  มีสถานะเป็น{statustatus_speed_rollers_speed} มีค่า {spespeed_rollered_motor} rpm คือ มีความเสี่ยงที่โรลเลอร์หยุดหมุนและเครื่องหยุดทำงานโดยสมบูรณ์")
+            alerts.append(f"SpeedRoller:  มีสถานะเป็น{status_speed_roller} มีค่า {speed_roller} rpm คือ มีความเสี่ยงที่โรลเลอร์หยุดหมุนและเครื่องหยุดทำงานโดยสมบูรณ์")
         elif speed_roller < risk_range_lower or speed_roller > risk_range_upper:
              status_speed_roller = "เสี่ยง"
              alerts.append(f"SpeedRoller:  มีสถานะเป็น{status_speed_roller} มีค่า {speed_roller} rpm คือ มีความเสี่ยงที่จะเกิด Chute jam โดย ปัญหาอาจจะเกิดมาจาก อ้อยติด, alignment roller ผิด,ความเร็วไม่สัมพันธ์")

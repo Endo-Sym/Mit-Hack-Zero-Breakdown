@@ -1,5 +1,5 @@
 .sensor-analysis-container {
-  background: white;
+  background: transparent;
   padding: 2rem;
   height: 100%;
   overflow-y: auto;
@@ -7,26 +7,37 @@
 
 .sensor-analysis-container h2 {
   margin-top: 0;
-  color: #333;
+  margin-bottom: 1.5rem;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   display: flex;
   align-items: center;
+  letter-spacing: -0.02em;
 }
 
 .machine-selector-section {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 2px solid #3b82f6;
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.15), rgba(96, 165, 250, 0.1));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  box-shadow: 0 8px 32px rgba(15, 10, 30, 0.4);
 }
 
 .machine-selector-section h3 {
-  color: #1e40af;
+  color: var(--primary-glow);
   margin-top: 0;
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
   font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .machine-selector-controls {
@@ -40,46 +51,53 @@
   flex: 1;
   min-width: 200px;
   padding: 0.75rem 1rem;
-  border: 2px solid #3b82f6;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
   font-size: 1rem;
-  background: white;
-  color: #1e293b;
+  color: var(--text);
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .machine-select:hover {
-  border-color: #2563eb;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  border-color: rgba(167, 139, 250, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.2);
 }
 
 .machine-select:focus {
   outline: none;
-  border-color: #1d4ed8;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+}
+
+.machine-select option {
+  background: #1A1625;
+  color: var(--text);
 }
 
 .btn-load-data {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
   white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
 }
 
 .btn-load-data:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 25px rgba(167, 139, 250, 0.4);
 }
 
 .btn-load-data:disabled {
@@ -103,6 +121,13 @@
 
 .form-section {
   margin-bottom: 2rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(15, 10, 30, 0.4);
 }
 
 .form-section label {
@@ -113,21 +138,31 @@
 .form-section label strong {
   display: block;
   margin-bottom: 0.5rem;
-  color: #555;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .form-section input {
   width: 100%;
   padding: 0.75rem;
-  border: 2px solid #ddd;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   font-size: 0.95rem;
-  transition: border-color 0.3s;
+  color: var(--text);
+  transition: all 0.3s ease;
 }
 
 .form-section input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: rgba(167, 139, 250, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.2);
+}
+
+.form-section input::placeholder {
+  color: rgba(243, 244, 246, 0.5);
 }
 
 .sensor-grid {
@@ -140,7 +175,7 @@
 .sensor-grid label small {
   display: block;
   margin-top: 0.25rem;
-  color: #888;
+  color: rgba(243, 244, 246, 0.6);
   font-size: 0.85rem;
 }
 
@@ -154,40 +189,47 @@
   flex: 1;
   padding: 1rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .button-group button:first-child {
-  background: #667eea;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
 }
 
 .button-group button.btn-predict {
-  background: #48bb78;
+  background: linear-gradient(135deg, #10B981, #059669);
   color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
 .button-group button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 25px rgba(167, 139, 250, 0.4);
 }
 
 .button-group button:disabled {
-  background: #ccc;
+  background: rgba(255, 255, 255, 0.1);
   cursor: not-allowed;
   transform: none;
+  opacity: 0.5;
 }
 
 .result-section {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: #f9f9f9;
-  border-radius: 12px;
-  border: 2px solid #e0e0e0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(15, 10, 30, 0.4);
   animation: slideIn 0.4s ease;
 }
 
@@ -204,20 +246,23 @@
 
 .result-section h3 {
   margin-top: 0;
-  color: #333;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .alerts-box {
-  background: #fff3cd;
-  border-left: 4px solid #ffc107;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.05));
+  border-left: 4px solid var(--accent-glow);
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 1rem;
+  backdrop-filter: blur(10px);
 }
 
 .alerts-box h4 {
   margin-top: 0;
-  color: #856404;
+  color: var(--accent-glow);
+  font-weight: 600;
 }
 
 .alerts-box ul {
@@ -227,37 +272,40 @@
 
 .alerts-box li {
   margin-bottom: 0.5rem;
-  color: #856404;
+  color: var(--text);
 }
 
 .success-box {
-  background: #d4edda;
-  border-left: 4px solid #28a745;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+  border-left: 4px solid #10B981;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 1rem;
+  backdrop-filter: blur(10px);
 }
 
 .success-box p {
   margin: 0;
-  color: #155724;
+  color: #10B981;
   font-weight: 600;
 }
 
 .recommendation-box {
-  background: white;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(15px);
   padding: 1.5rem;
-  border-radius: 8px;
-  border: 2px solid #667eea;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.3);
 }
 
 .recommendation-box h4 {
   margin-top: 0;
-  color: #667eea;
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .prediction-result {
-  border: 2px solid #48bb78;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .risk-score-box {
@@ -271,22 +319,24 @@
   flex-direction: column;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(15, 10, 30, 0.6);
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .risk-badge.risk-ต่ำ {
-  background: linear-gradient(135deg, #48bb78, #38a169);
+  background: linear-gradient(135deg, #10B981, #059669);
   color: white;
 }
 
 .risk-badge.risk-ปานกลาง {
-  background: linear-gradient(135deg, #ed8936, #dd6b20);
+  background: linear-gradient(135deg, #F59E0B, #D97706);
   color: white;
 }
 
 .risk-badge.risk-สูง {
-  background: linear-gradient(135deg, #f56565, #e53e3e);
+  background: linear-gradient(135deg, #EF4444, #DC2626);
   color: white;
 }
 
@@ -303,14 +353,16 @@
 }
 
 .prediction-box {
-  background: white;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+  backdrop-filter: blur(15px);
   padding: 1.5rem;
-  border-radius: 8px;
-  border: 2px solid #48bb78;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
   margin-bottom: 1rem;
 }
 
 .prediction-box h4 {
   margin-top: 0;
-  color: #48bb78;
+  color: #10B981;
+  font-weight: 600;
 }
