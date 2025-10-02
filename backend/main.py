@@ -8,6 +8,9 @@ import os
 from datetime import datetime
 from configs import SensorReadings, MachineData, ChatMessage, ROIRequest
 from BreakdownMaintenanceAdviceTool import BreakdownMaintenanceAdviceTool
+from dotenv import load_dotenv
+
+load_dotenv()
 app = FastAPI(title="MITR Phol_Zero Breakdown Prediction API")
 
 # CORS middleware
